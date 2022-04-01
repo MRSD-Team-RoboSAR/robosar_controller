@@ -1,0 +1,8 @@
+#goal definition
+nav_msgs/Path path
+---
+#result definition
+bool goal_reached
+---
+#feedback
+geometry_msgs/PoseWithCovariance pose
