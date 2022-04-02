@@ -72,7 +72,7 @@ find_package(orocos_kdl REQUIRED)
 add_action_files(
   FILES
   PurePursuit.action
-  robosar_controller.action
+  RobosarController.action
 )
 
 ## Generate added messages and services with any dependencies listed here

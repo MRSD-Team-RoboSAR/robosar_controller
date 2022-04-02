@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include <robosar_controller/PurePursuitAction.h>
+#include <robosar_controller/RobosarControllerAction.h>
 
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -16,7 +17,6 @@
 #include <ackermann_msgs/AckermannDriveStamped.h>
 
 #include <kdl/frames.hpp>
-#include <dynamic_reconfigure/server.h>
 #include <robosar_controller/PurePursuitConfig.h>
 class ControllerAction
 {
@@ -29,9 +29,6 @@ private:
   tf2_ros::TransformBroadcaster tf_broadcaster_;
   geometry_msgs::TransformStamped lookahead_;
   std::string map_frame_id_, robot_frame_id_, lookahead_frame_id_, acker_frame_id_;
-
-  dynamic_reconfigure::Server<robosar_controller::PurePursuitConfig> reconfigure_server_;
-  dynamic_reconfigure::Server<robosar_controller::PurePursuitConfig>::CallbackType reconfigure_callback_;
 
   // Vehicle parameters
   double L_;
@@ -50,11 +47,11 @@ private:
   ackermann_msgs::AckermannDriveStamped cmd_acker_;
 protected:
 
-  actionlib::SimpleActionServer<robosar_controller::PurePursuitAction> as_; // NodeHandle instance must be created before this line. Otherwise strange error occurs.
+  actionlib::SimpleActionServer<robosar_controller::RobosarControllerAction> as_; // NodeHandle instance must be created before this line. Otherwise strange error occurs.
   std::string action_name_;
   // create messages that are used to published feedback/result
-  robosar_controller::PurePursuitFeedback feedback_;
-  robosar_controller::PurePursuitResult result_;
+  robosar_controller::RobosarControllerFeedback feedback_;
+  robosar_controller::RobosarControllerResult result_;
 
 public:
 
@@ -91,13 +88,11 @@ public:
     cmd_acker_.drive.acceleration = acc_;
     cmd_acker_.drive.jerk = jerk_;
 
-    reconfigure_callback_ = boost::bind(&ControllerAction::reconfigure, this, _1, _2);
-    reconfigure_server_.setCallback(reconfigure_callback_);
 
     as_.start();
   }
 
-  void executeCB(const robosar_controller::PurePursuitGoalConstPtr &goal)
+  void executeCB(const robosar_controller::RobosarControllerGoalConstPtr &goal)
   {
     // helper variables
     ros::Rate r(1);
@@ -107,7 +102,7 @@ public:
     ROS_INFO("Executing Action");
     receivePath(goal->path);
     sub_odom_ = nh_.subscribe("/robot_0/odom", 1, &ControllerAction::computeVelocities, this);
-    pub_vel_ = nh_.advertise<geometry_msgs::Twist>("pp_cmd_vel", 1);
+    pub_vel_ = nh_.advertise<geometry_msgs::Twist>(goal->agent_name+"/cmd_vel", 1);
 
     while(!goal_reached_)
     {
@@ -161,10 +156,6 @@ public:
     
   }
 
-  void reconfigure(robosar_controller::PurePursuitConfig &config, uint32_t level)
-  {
-    v_max_ = config.max_linear_velocity;
-  }
 
   void computeVelocities(nav_msgs::Odometry odom)
   {
