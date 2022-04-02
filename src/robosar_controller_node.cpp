@@ -135,41 +135,29 @@ public:
   }
   void receivePath(nav_msgs::Path new_path)
   {
-    ROS_INFO("IN path");
-    for (int idx_; idx_ < new_path.poses.size(); idx_++){
-      std::vector<double> coordinates;
-      coordinates.push_back(new_path.poses[idx_].pose.position.x);
-      coordinates.push_back(new_path.poses[idx_].pose.position.y);
-      coordinates.push_back(new_path.poses[idx_].pose.position.z);
-      path_.push(coordinates);
+    ROS_INFO("Receiving path!");
+
+    if(new_path.poses.size()>0)
+    {
+      for (int idx_; idx_ < new_path.poses.size(); idx_++){
+        std::vector<double> coordinates;
+        coordinates.push_back(new_path.poses[idx_].pose.position.x);
+        coordinates.push_back(new_path.poses[idx_].pose.position.y);
+        coordinates.push_back(new_path.poses[idx_].pose.position.z);
+        path_.push(coordinates);
+      }
+       goal_reached_ = false;
+    }
+    else
+    {
+      goal_reached_ = true;
+      ROS_WARN_STREAM("Received empty path!");
     }
     // When a new path received, the previous one is simply discarded
     // It is up to the planner/motion manager to make sure that the new
     // path is feasible.
     // Callbacks are non-interruptible, so this will
     // not interfere with velocity computation callback.
-    
-    /*if (new_path.header.frame_id == map_frame_id_)
-    {
-      path_ = new_path;
-      //ROS_INFO_STREAM("Path is"<<path_);
-      idx_ = 0;
-      if (new_path.poses.size() > 0)
-      {
-        goal_reached_ = false;
-      }
-      else
-      {
-        goal_reached_ = true;
-        ROS_WARN_STREAM("Received empty path!");
-      }
-    }
-    else
-    {
-      ROS_WARN_STREAM("The path must be published in the " << map_frame_id_
-                      << " frame! Ignoring path in " << new_path.header.frame_id
-                      << " frame!");
-    }*/
     
   }
 
