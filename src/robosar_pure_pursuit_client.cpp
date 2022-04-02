@@ -20,8 +20,45 @@ int main (int argc, char **argv)
   robosar_pure_pursuit::PurePursuitGoal goal;
 
   goal.path.header.frame_id = "map";
+  goal.path.header.seq = 0;
   goal.path.header.stamp = ros::Time::now();
 
+  geometry_msgs::PoseStamped pose;
+  /*pose.header.seq=0;
+  pose.header.stamp = ros::Time::now();
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 5.000001175150732;
+  pose.pose.position.y = -15.93542187094954e-08;
+  pose.pose.orientation.z = -0.18145437944873438;
+  pose.pose.orientation.w = 0.9833993635237287;
+  goal.path.poses.push_back(pose);
+
+  pose.header.seq=0;
+  pose.header.stamp = ros::Time::now();
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 5.432267416943564;
+  pose.pose.position.y = -0.16514412848986026;
+  pose.pose.orientation.z = -0.1613906061700738;
+  pose.pose.orientation.w = 0.9868906080412642;
+  goal.path.poses.push_back(pose);*/
+
+  pose.header.seq=0;
+  pose.header.stamp = ros::Time::now();
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 0.5;
+  pose.pose.position.y = -0.18;
+  pose.pose.orientation.z = -0.18145437944873438;
+  pose.pose.orientation.w = 0.9833993635237287;
+  goal.path.poses.push_back(pose);
+
+  pose.header.seq=0;
+  pose.header.stamp = ros::Time::now();
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 0.5;
+  pose.pose.position.y = -0.77;
+  pose.pose.orientation.z = -0.1613906061700738;
+  pose.pose.orientation.w = 0.9868906080412642;
+  goal.path.poses.push_back(pose);
   //goal.path.poses[0].pose.position.x = 1.0;
   //goal.path.poses[0].pose.orientation.w = 1.0;
   ac.sendGoal(goal);

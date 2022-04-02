@@ -59,12 +59,12 @@ public:
 
   PurePursuitAction(std::string name) :
     as_(nh_, name, boost::bind(&PurePursuitAction::executeCB, this, _1), false),action_name_(name),
-    ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), idx_(0),goal_reached_(true), 
+    ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), idx_(0),goal_reached_(false), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead")
   {
     // Get parameters from the parameter server
-    nh_private_.param<double>("wheelbase", L_, 1.0);
+    /*nh_private_.param<double>("wheelbase", L_, 1.0);
     nh_private_.param<double>("lookahead_distance", ld_, 1.0);
     //nh_private_.param<double>("linear_velocity", v_, 0.1);
     nh_private_.param<double>("max_rotational_velocity", w_max_, 1.0);
@@ -72,7 +72,19 @@ public:
     nh_private_.param<double>("steering_angle_velocity", delta_vel_, 100.0);
     nh_private_.param<double>("acceleration", acc_, 100.0);
     nh_private_.param<double>("jerk", jerk_, 100.0);
-    nh_private_.param<double>("steering_angle_limit", delta_max_, 1.57);
+    nh_private_.param<double>("steering_angle_limit", delta_max_, 1.57);*/
+
+    //Below parameters for simulation
+    nh_private_.param<double>("wheelbase", L_, 0.4);
+    nh_private_.param<double>("lookahead_distance", ld_, 0.1);
+    //nh_private_.param<double>("linear_velocity", v_, 0.1);
+    nh_private_.param<double>("max_rotational_velocity", w_max_, 5);
+    nh_private_.param<double>("position_tolerance", pos_tol_, 0.1);
+    nh_private_.param<double>("steering_angle_velocity", delta_vel_, 5);
+    nh_private_.param<double>("acceleration", acc_, 3);
+    nh_private_.param<double>("jerk", jerk_, 3);
+    nh_private_.param<double>("steering_angle_limit", delta_max_, 3);
+
     nh_private_.param<std::string>("map_frame_id", map_frame_id_, "map");
     // Frame attached to midpoint of rear axle (for front-steered vehicles).
     nh_private_.param<std::string>("robot_frame_id", robot_frame_id_, "robot_0/base_link");
@@ -93,6 +105,8 @@ public:
     reconfigure_callback_ = boost::bind(&PurePursuitAction::reconfigure, this, _1, _2);
     reconfigure_server_.setCallback(reconfigure_callback_);
 
+    pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robot_0/cmd_vel", 1);
+    pub_acker_ = nh_.advertise<ackermann_msgs::AckermannDriveStamped>("pp_cmd_acker", 1);
     as_.start();
   }
 
@@ -104,11 +118,9 @@ public:
 
     // publish info to the console for the user
     ROS_INFO("Executing Action");
-
-    sub_path_ = nh_.subscribe("/robot_0/move_base_node/GlobalPlanner/plan", 1, &PurePursuitAction::receivePath, this);
+    receivePath(goal->path);
+    //sub_path_ = nh_.subscribe("/robot_0/move_base_node/GlobalPlanner/plan", 1, &PurePursuitAction::receivePath, this);
     sub_odom_ = nh_.subscribe("/robot_0/odom", 1, &PurePursuitAction::computeVelocities, this);
-    pub_vel_ = nh_.advertise<geometry_msgs::Twist>("pp_cmd_vel", 1);
-    pub_acker_ = nh_.advertise<ackermann_msgs::AckermannDriveStamped>("pp_cmd_acker", 1);
 
     while(!goal_reached_)
     {
@@ -134,6 +146,7 @@ public:
   ~PurePursuitAction(void)
   {
   }
+
   void receivePath(nav_msgs::Path new_path)
   {
     // When a new path received, the previous one is simply discarded
