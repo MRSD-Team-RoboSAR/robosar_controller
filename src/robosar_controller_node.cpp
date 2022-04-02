@@ -22,7 +22,7 @@ class ControllerAction
 {
 private:
   ros::NodeHandle nh_, nh_private_;
-  ros::Subscriber sub_odom_, sub_path_;
+  ros::Timer controller_timer;
   ros::Publisher pub_vel_, pub_acker_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
@@ -30,6 +30,7 @@ private:
   geometry_msgs::TransformStamped lookahead_;
   std::string map_frame_id_, robot_frame_id_, lookahead_frame_id_, acker_frame_id_;
 
+  double controller_period_s;
   // Vehicle parameters
   double L_;
   // Algorithm variables
@@ -59,7 +60,7 @@ public:
     as_(nh_, name, boost::bind(&ControllerAction::executeCB, this, _1), false),action_name_(name),
     ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
-    lookahead_frame_id_("lookahead")
+    lookahead_frame_id_("lookahead"), controller_period_s(0.1)
   {
     // Get parameters from the parameter server
     nh_private_.param<double>("wheelbase", L_, 1.0);
@@ -101,7 +102,8 @@ public:
     // publish info to the console for the user
     ROS_INFO("Executing Action");
     receivePath(goal->path);
-    sub_odom_ = nh_.subscribe("/robot_0/odom", 1, &ControllerAction::computeVelocities, this);
+    controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&ControllerAction::computeVelocities, this, _1));
+    controller_timer.stop();
     pub_vel_ = nh_.advertise<geometry_msgs::Twist>(goal->agent_name+"/cmd_vel", 1);
 
     while(!goal_reached_)
@@ -157,7 +159,7 @@ public:
   }
 
 
-  void computeVelocities(nav_msgs::Odometry odom)
+  void computeVelocities(const ros::TimerEvent&)
   {
     // The velocity commands are computed, each time a new Odometry message is received.
     // Odometry is not used directly, but through the tf tree.
