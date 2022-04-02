@@ -42,7 +42,7 @@ private:
   // Control variables for Ackermann steering
   // Steering angle is denoted by delta
   double delta_, delta_vel_, acc_, jerk_, delta_max_;
-  nav_msgs::Path path_;
+  std::queue<std::vector<double> path_coordinates> path_;
   unsigned idx_;
   bool goal_reached_;
   geometry_msgs::Twist cmd_vel_;
@@ -104,11 +104,9 @@ public:
 
     // publish info to the console for the user
     ROS_INFO("Executing Action");
-
-    sub_path_ = nh_.subscribe("/robot_0/move_base_node/GlobalPlanner/plan", 1, &PurePursuitAction::receivePath, this);
+    receivePath(goal->path);
     sub_odom_ = nh_.subscribe("/robot_0/odom", 1, &PurePursuitAction::computeVelocities, this);
     pub_vel_ = nh_.advertise<geometry_msgs::Twist>("pp_cmd_vel", 1);
-    pub_acker_ = nh_.advertise<ackermann_msgs::AckermannDriveStamped>("pp_cmd_acker", 1);
 
     while(!goal_reached_)
     {
@@ -136,13 +134,21 @@ public:
   }
   void receivePath(nav_msgs::Path new_path)
   {
+    ROS_INFO("IN path");
+    for (int idx_; idx_ < new_path.poses.size(); idx_++){
+      vector<double> coordinates;
+      coordinates.push_back(new_path.poses.pose.position.x);
+      coordinates.push_back(new_path.poses.pose.position.y);
+      coordinates.push_back(new_path.poses.pose.position.z);
+      path_.push(coordinates);
+    }
     // When a new path received, the previous one is simply discarded
     // It is up to the planner/motion manager to make sure that the new
     // path is feasible.
     // Callbacks are non-interruptible, so this will
     // not interfere with velocity computation callback.
-    ROS_INFO("IN path");
-    if (new_path.header.frame_id == map_frame_id_)
+    
+    /*if (new_path.header.frame_id == map_frame_id_)
     {
       path_ = new_path;
       //ROS_INFO_STREAM("Path is"<<path_);
@@ -162,7 +168,7 @@ public:
       ROS_WARN_STREAM("The path must be published in the " << map_frame_id_
                       << " frame! Ignoring path in " << new_path.header.frame_id
                       << " frame!");
-    }
+    }*/
     
   }
 
