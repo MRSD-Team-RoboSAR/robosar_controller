@@ -4,7 +4,7 @@
 
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
-#include <robosar_pure_pursuit/PurePursuitAction.h>
+#include <robosar_controller/PurePursuitAction.h>
 
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -16,8 +16,8 @@
 
 #include <kdl/frames.hpp>
 #include <dynamic_reconfigure/server.h>
-#include <robosar_pure_pursuit/PurePursuitConfig.h>
-class PurePursuitAction
+#include <robosar_controller/PurePursuitConfig.h>
+class ControllerAction
 {
 private:
   ros::NodeHandle nh_, nh_private_;
@@ -29,8 +29,8 @@ private:
   geometry_msgs::TransformStamped lookahead_;
   std::string map_frame_id_, robot_frame_id_, lookahead_frame_id_, acker_frame_id_;
 
-  dynamic_reconfigure::Server<robosar_pure_pursuit::PurePursuitConfig> reconfigure_server_;
-  dynamic_reconfigure::Server<robosar_pure_pursuit::PurePursuitConfig>::CallbackType reconfigure_callback_;
+  dynamic_reconfigure::Server<robosar_controller::PurePursuitConfig> reconfigure_server_;
+  dynamic_reconfigure::Server<robosar_controller::PurePursuitConfig>::CallbackType reconfigure_callback_;
 
   // Vehicle parameters
   double L_;
@@ -49,16 +49,16 @@ private:
   ackermann_msgs::AckermannDriveStamped cmd_acker_;
 protected:
 
-  actionlib::SimpleActionServer<robosar_pure_pursuit::PurePursuitAction> as_; // NodeHandle instance must be created before this line. Otherwise strange error occurs.
+  actionlib::SimpleActionServer<robosar_controller::PurePursuitAction> as_; // NodeHandle instance must be created before this line. Otherwise strange error occurs.
   std::string action_name_;
   // create messages that are used to published feedback/result
-  robosar_pure_pursuit::PurePursuitFeedback feedback_;
-  robosar_pure_pursuit::PurePursuitResult result_;
+  robosar_controller::PurePursuitFeedback feedback_;
+  robosar_controller::PurePursuitResult result_;
 
 public:
 
-  PurePursuitAction(std::string name) :
-    as_(nh_, name, boost::bind(&PurePursuitAction::executeCB, this, _1), false),action_name_(name),
+  ControllerAction(std::string name) :
+    as_(nh_, name, boost::bind(&ControllerAction::executeCB, this, _1), false),action_name_(name),
     ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead")
@@ -90,13 +90,13 @@ public:
     cmd_acker_.drive.acceleration = acc_;
     cmd_acker_.drive.jerk = jerk_;
 
-    reconfigure_callback_ = boost::bind(&PurePursuitAction::reconfigure, this, _1, _2);
+    reconfigure_callback_ = boost::bind(&ControllerAction::reconfigure, this, _1, _2);
     reconfigure_server_.setCallback(reconfigure_callback_);
 
     as_.start();
   }
 
-  void executeCB(const robosar_pure_pursuit::PurePursuitGoalConstPtr &goal)
+  void executeCB(const robosar_controller::PurePursuitGoalConstPtr &goal)
   {
     // helper variables
     ros::Rate r(1);
@@ -105,7 +105,7 @@ public:
     // publish info to the console for the user
     ROS_INFO("Executing Action");
     receivePath(goal->path);
-    sub_odom_ = nh_.subscribe("/robot_0/odom", 1, &PurePursuitAction::computeVelocities, this);
+    sub_odom_ = nh_.subscribe("/robot_0/odom", 1, &ControllerAction::computeVelocities, this);
     pub_vel_ = nh_.advertise<geometry_msgs::Twist>("pp_cmd_vel", 1);
 
     while(!goal_reached_)
@@ -129,7 +129,7 @@ public:
     }
   }
 
-  ~PurePursuitAction(void)
+  ~ControllerAction(void)
   {
   }
   void receivePath(nav_msgs::Path new_path)
@@ -172,7 +172,7 @@ public:
     
   }
 
-  void reconfigure(robosar_pure_pursuit::PurePursuitConfig &config, uint32_t level)
+  void reconfigure(robosar_controller::PurePursuitConfig &config, uint32_t level)
   {
     v_max_ = config.max_linear_velocity;
   }
@@ -353,7 +353,7 @@ public:
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "purepursuit");
-  PurePursuitAction purepursuit("purepursuit");
+  ControllerAction purepursuit("purepursuit");
   ros::spin();
 
   return 0;

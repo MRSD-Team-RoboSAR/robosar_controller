@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(robosar_pure_pursuit)
+project(robosar_controller)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -72,6 +72,7 @@ find_package(orocos_kdl REQUIRED)
 add_action_files(
   FILES
   PurePursuit.action
+  robosar_controller.action
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -139,8 +140,8 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/robosar_pure_pursuit_node.cpp)
-add_executable(robosar_pure_pursuit_client src/robosar_pure_pursuit_client.cpp)
+add_executable(${PROJECT_NAME}_node src/robosar_controller_node.cpp)
+add_executable(robosar_controller_client src/robosar_controller_client.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -149,13 +150,13 @@ add_executable(robosar_pure_pursuit_client src/robosar_pure_pursuit_client.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_node robosar_pure_pursuit_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_node robosar_controller_client ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES} ${orocos_kdl_LIBRARIES}
 )
-target_link_libraries(robosar_pure_pursuit_client
+target_link_libraries(robosar_controller_client
   ${catkin_LIBRARIES}
 )
 #############
