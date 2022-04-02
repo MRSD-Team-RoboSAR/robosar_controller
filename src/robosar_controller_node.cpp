@@ -1,6 +1,7 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
+#include <queue>
 
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
@@ -42,7 +43,7 @@ private:
   // Control variables for Ackermann steering
   // Steering angle is denoted by delta
   double delta_, delta_vel_, acc_, jerk_, delta_max_;
-  std::queue<std::vector<double> path_coordinates> path_;
+  std::queue<std::vector<double>> path_;
   unsigned idx_;
   bool goal_reached_;
   geometry_msgs::Twist cmd_vel_;
@@ -136,10 +137,10 @@ public:
   {
     ROS_INFO("IN path");
     for (int idx_; idx_ < new_path.poses.size(); idx_++){
-      vector<double> coordinates;
-      coordinates.push_back(new_path.poses.pose.position.x);
-      coordinates.push_back(new_path.poses.pose.position.y);
-      coordinates.push_back(new_path.poses.pose.position.z);
+      std::vector<double> coordinates;
+      coordinates.push_back(new_path.poses[idx_].pose.position.x);
+      coordinates.push_back(new_path.poses[idx_].pose.position.y);
+      coordinates.push_back(new_path.poses[idx_].pose.position.z);
       path_.push(coordinates);
     }
     // When a new path received, the previous one is simply discarded
