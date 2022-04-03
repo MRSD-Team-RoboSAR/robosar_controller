@@ -103,7 +103,6 @@ public:
     ROS_INFO("Executing Action");
     receivePath(goal->path);
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&ControllerAction::computeVelocities, this, _1));
-    controller_timer.stop();
     pub_vel_ = nh_.advertise<geometry_msgs::Twist>(goal->agent_name+"/cmd_vel", 1);
 
     while(!goal_reached_)
@@ -120,6 +119,7 @@ public:
 
     if(goal_reached_)
     {
+      controller_timer.stop();
       result_.goal_reached = true;
       ROS_INFO("%s: Succeeded", action_name_.c_str());
       // set the action state to succeeded
@@ -136,7 +136,7 @@ public:
 
     if(new_path.poses.size()>0)
     {
-      for (int idx_; idx_ < new_path.poses.size(); idx_++){
+      for (int idx_ = 0; idx_ < new_path.poses.size(); idx_++){
         std::vector<double> coordinates;
         coordinates.push_back(new_path.poses[idx_].pose.position.x);
         coordinates.push_back(new_path.poses[idx_].pose.position.y);
@@ -155,15 +155,29 @@ public:
     // path is feasible.
     // Callbacks are non-interruptible, so this will
     // not interfere with velocity computation callback.
-    
+    ROS_INFO("Received path!");
   }
 
 
   void computeVelocities(const ros::TimerEvent&)
   {
+    ROS_INFO("Computing Velocity");
+
     if(!path_.empty()){
+      geometry_msgs::TransformStamped tf;
+      tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
+
+      tf::Quaternion q(tf.transform.rotation.x,
+          tf.transform.rotation.y,
+          tf.transform.rotation.z,
+          tf.transform.rotation.w);
+      tf::Matrix3x3 m(q);
+      double roll, pitch, yaw;
+      m.getRPY(roll, pitch, yaw);
+      ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
+
       std::vector<double> coordinates = path_.front();
-      std::vector<double> currState{0,0,0,0}; //TODO getting current x,y,theta,v values
+      std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,0}; //TODO getting current v value
 
       double dx = coordinates[0] - currState[0];
       double dy = coordinates[1] - currState[1];
@@ -185,6 +199,7 @@ public:
       //Stop moving
       cmd_vel_.linear.x = 0.0;
       cmd_vel_.angular.z = 0.0;
+      pub_vel_.publish(cmd_vel_);
       goal_reached_ = true;
     }
 
@@ -359,8 +374,8 @@ public:
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "purepursuit");
-  ControllerAction purepursuit("purepursuit");
+  ros::init(argc, argv, "controller");
+  ControllerAction controller("controller");
   ros::spin();
 
   return 0;
