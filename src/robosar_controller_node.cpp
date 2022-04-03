@@ -2,7 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include <queue>
-
+#include <tf/transform_listener.h>
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include <robosar_controller/PurePursuitAction.h>
@@ -161,9 +161,34 @@ public:
 
   void computeVelocities(const ros::TimerEvent&)
   {
-    // The velocity commands are computed, each time a new Odometry message is received.
-    // Odometry is not used directly, but through the tf tree.
-    
+    if(!path_.empty()){
+      std::vector<double> coordinates = path_.front();
+      std::vector<double> currState{0,0,0,0}; //TODO getting current x,y,theta,v values
+
+      double dx = coordinates[0] - currState[0];
+      double dy = coordinates[1] - currState[1];
+      double v_f = sqrt(dx*dx + dy*dy);
+      double theta_f = atan(dy/dx);
+
+      double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
+      double vd_y = v_f*sin(theta_f) - currState[3]*sin(currState[2]);
+      double vd = sqrt(vd_x*vd_x + vd_y*vd_y);
+      double alpha = atan(vd_y/vd_x);
+
+      cmd_vel_.linear.x = vd;
+      cmd_vel_.angular.z = alpha;
+      pub_vel_.publish(cmd_vel_);
+      path_.pop();
+    }
+    else{
+      //Path list is empty -> goal should have been reached
+      //Stop moving
+      cmd_vel_.linear.x = 0.0;
+      cmd_vel_.angular.z = 0.0;
+      goal_reached_ = true;
+    }
+
+    /*
     // Get the current robot pose
     geometry_msgs::TransformStamped tf;
     try
@@ -293,7 +318,7 @@ public:
     catch (tf2::TransformException &ex)
     {
       //ROS_WARN_STREAM(ex.what());
-    }
+    }*/
   }
 
   KDL::Frame transformToBaseLink(const geometry_msgs::Pose& pose,
