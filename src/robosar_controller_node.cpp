@@ -30,6 +30,9 @@ private:
   geometry_msgs::TransformStamped lookahead_;
   std::string map_frame_id_, robot_frame_id_, lookahead_frame_id_, acker_frame_id_;
 
+  bool rotate_to_global_plan;
+  double v_linear_last;
+  unsigned int controller_it;
   double controller_period_s;
   // Vehicle parameters
   double L_;
@@ -60,7 +63,8 @@ public:
     as_(nh_, name, boost::bind(&ControllerAction::executeCB, this, _1), false),action_name_(name),
     ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
-    lookahead_frame_id_("lookahead"), controller_period_s(0.1)
+    lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
+    rotate_to_global_plan(true)
   {
     // Get parameters from the parameter server
     nh_private_.param<double>("wheelbase", L_, 1.0);
@@ -113,6 +117,7 @@ public:
         // set the action state to preempted
         as_.setPreempted();
         success = false;
+        controller_timer.stop();
         break;
       }
     }
@@ -124,6 +129,7 @@ public:
       ROS_INFO("%s: Succeeded", action_name_.c_str());
       // set the action state to succeeded
       as_.setSucceeded(result_);
+      controller_timer.stop();
     }
   }
 
@@ -161,180 +167,70 @@ public:
 
   void computeVelocities(const ros::TimerEvent&)
   {
-    ROS_INFO("Computing Velocity");
-
-    if(!path_.empty()){
-      geometry_msgs::TransformStamped tf;
-      tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
-
-      tf::Quaternion q(tf.transform.rotation.x,
-          tf.transform.rotation.y,
-          tf.transform.rotation.z,
-          tf.transform.rotation.w);
-      tf::Matrix3x3 m(q);
-      double roll, pitch, yaw;
-      m.getRPY(roll, pitch, yaw);
-      ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
-
-      std::vector<double> coordinates = path_.front();
-      std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,0}; //TODO getting current v value
-
-      double dx = coordinates[0] - currState[0];
-      double dy = coordinates[1] - currState[1];
-      double v_f = sqrt(dx*dx + dy*dy);
-      double theta_f = atan(dy/dx);
-
-      double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
-      double vd_y = v_f*sin(theta_f) - currState[3]*sin(currState[2]);
-      double vd = sqrt(vd_x*vd_x + vd_y*vd_y);
-      double alpha = atan(vd_y/vd_x);
-
-      cmd_vel_.linear.x = vd;
-      cmd_vel_.angular.z = alpha;
-      pub_vel_.publish(cmd_vel_);
-      path_.pop();
-    }
-    else{
-      //Path list is empty -> goal should have been reached
-      //Stop moving
-      cmd_vel_.linear.x = 0.0;
-      cmd_vel_.angular.z = 0.0;
-      pub_vel_.publish(cmd_vel_);
-      goal_reached_ = true;
-    }
-
-    /*
-    // Get the current robot pose
-    geometry_msgs::TransformStamped tf;
-    try
+    if(rotate_to_global_plan)
     {
-      tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
-      // We first compute the new point to track, based on our current pose,
-      // path information and lookahead distance.
-      for (; idx_ < path_.poses.size(); idx_++)
+
+    }
+    else {
+
+      ROS_INFO("Computing Velocity");
+      controller_it++;
+      double time_elapsed = controller_it*controller_period_s;
+
+      // Synchronise controller time with path_time
+      double path_time = path_.front()[2];
+      int it=0;
+      while(!path_.empty() && time_elapsed>path_time)
       {
-        if (distance(path_.poses[idx_].pose.position, tf.transform.translation) > ld_)
-        {
-
-          // Transformed lookahead to base_link frame is lateral error
-          KDL::Frame F_bl_ld = transformToBaseLink(path_.poses[idx_].pose, tf.transform);
-          lookahead_.transform.translation.x = F_bl_ld.p.x();
-          lookahead_.transform.translation.y = F_bl_ld.p.y();
-          lookahead_.transform.translation.z = F_bl_ld.p.z();
-          F_bl_ld.M.GetQuaternion(lookahead_.transform.rotation.x,
-                                  lookahead_.transform.rotation.y,
-                                  lookahead_.transform.rotation.z,
-                                  lookahead_.transform.rotation.w);
-          
-          // TODO: See how the above conversion can be done more elegantly
-          // using tf2_kdl and tf2_geometry_msgs
-
-          break;
-        }
+        it++;
+        path_.pop();
       }
+      ROS_INFO("Popped %d velocities",it);
 
-      if (!path_.poses.empty() && idx_ >= path_.poses.size())
-      {
-        // We are approaching the goal,
-        // which is closer than ld
+      if(!path_.empty()){
+        geometry_msgs::TransformStamped tf;
+        tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
 
-        // This is the pose of the goal w.r.t. the base_link frame
-        KDL::Frame F_bl_end = transformToBaseLink(path_.poses.back().pose, tf.transform);
+        tf::Quaternion q(tf.transform.rotation.x,
+            tf.transform.rotation.y,
+            tf.transform.rotation.z,-
+            tf.transform.rotation.w);
+        tf::Matrix3x3 m(q);
+        double roll, pitch, yaw;
+        m.getRPY(roll, pitch, yaw);
+        ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
 
-        if (fabs(F_bl_end.p.x()) <= pos_tol_)
-        {
-          // We have reached the goal
-          goal_reached_ = true;
+        std::vector<double> coordinates = path_.front();
+        std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,v_linear_last}; //TODO getting current v value
 
-          // Reset the path
-          path_ = nav_msgs::Path();
-        }
-        else
-        {
-          // We need to extend the lookahead distance
-          // beyond the goal point.
-        
-          // Find the intersection between the circle of radius ld
-          // centered at the robot (origin)
-          // and the line defined by the last path pose
-          double roll, pitch, yaw;
-          F_bl_end.M.GetRPY(roll, pitch, yaw);
-          double k_end = tan(yaw); // Slope of line defined by the last path pose
-          double l_end = F_bl_end.p.y() - k_end * F_bl_end.p.x();
-          double a = 1 + k_end * k_end;
-          double b = 2 * l_end;
-          double c = l_end * l_end - ld_ * ld_;
-          double D = sqrt(b*b - 4*a*c);
-          double x_ld = (-b + copysign(D,v_)) / (2*a);
-          double y_ld = k_end * x_ld + l_end;
-          
-          lookahead_.transform.translation.x = x_ld;
-          lookahead_.transform.translation.y = y_ld;
-          lookahead_.transform.translation.z = F_bl_end.p.z();
-          F_bl_end.M.GetQuaternion(lookahead_.transform.rotation.x,
-                                  lookahead_.transform.rotation.y,
-                                  lookahead_.transform.rotation.z,
-                                  lookahead_.transform.rotation.w);
-        }
+        double dx = coordinates[0] - currState[0];
+        double dy = coordinates[1] - currState[1];
+        double v_f = sqrt(dx*dx + dy*dy);
+        double theta_f = atan(dy/dx);
+
+        double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
+        double vd_y = v_f*sin(theta_f) - currState[3]*sin(currState[2]);
+        double vd = sqrt(vd_x*vd_x + vd_y*vd_y);
+        double alpha = atan(vd_y/vd_x);
+
+        cmd_vel_.linear.x = vd;
+        cmd_vel_.angular.z = alpha;
+        pub_vel_.publish(cmd_vel_);
       }
-
-      if (!goal_reached_)
-      {
-        // We are tracking.
-
-        // Compute linear velocity.
-        // Right now,this is not very smart :)
-        v_ = copysign(v_max_, v_);
-        
-        // Compute the angular velocity.
-        // Lateral error is the y-value of the lookahead point (in base_link frame)
-        double yt = lookahead_.transform.translation.y;
-        double ld_2 = ld_ * ld_;
-        cmd_vel_.angular.z = std::min( 2*v_ / ld_2 * yt, w_max_ );
-
-        // Compute desired Ackermann steering angle
-        cmd_acker_.drive.steering_angle = std::min( atan2(2 * yt * L_, ld_2), delta_max_ );
-        
-        // Set linear velocity for tracking.
-        cmd_vel_.linear.x = v_;
-        cmd_acker_.drive.speed = v_;
-
-        cmd_acker_.header.stamp = ros::Time::now();
-      }
-      else
-      {
-        // We are at the goal!
-
-        // Stop the vehicle
-        
-        // The lookahead target is at our current pose.
-        lookahead_.transform = geometry_msgs::Transform();
-        lookahead_.transform.rotation.w = 1.0;
-        
-        // Stop moving.
+      else {
+        //Path list is empty -> goal should have been reached
+        //Stop moving
         cmd_vel_.linear.x = 0.0;
         cmd_vel_.angular.z = 0.0;
-
-        cmd_acker_.header.stamp = ros::Time::now();
-        cmd_acker_.drive.steering_angle = 0.0;
-        cmd_acker_.drive.speed = 0.0;
+        pub_vel_.publish(cmd_vel_);
+        goal_reached_ = true;
       }
 
-      // Publish the lookahead target transform.
-      lookahead_.header.stamp = ros::Time::now();
-      tf_broadcaster_.sendTransform(lookahead_);
-      
-      // Publish the velocities
-      pub_vel_.publish(cmd_vel_);
-      
-      // Publish ackerman steering setpoints
-      pub_acker_.publish(cmd_acker_);
     }
-    catch (tf2::TransformException &ex)
-    {
-      //ROS_WARN_STREAM(ex.what());
-    }*/
+
+   
   }
+
 
   KDL::Frame transformToBaseLink(const geometry_msgs::Pose& pose,
                                               const geometry_msgs::Transform& tf)
@@ -374,8 +270,8 @@ public:
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "controller");
-  ControllerAction controller("controller");
+  ros::init(argc, argv, "robosar_controller");
+  ControllerAction purepursuit("robosar_controller");
   ros::spin();
 
   return 0;
