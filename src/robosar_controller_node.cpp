@@ -2,16 +2,18 @@
 #include <cmath>
 #include <algorithm>
 #include <queue>
-#include <tf/transform_listener.h>
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
 #include <robosar_controller/PurePursuitAction.h>
 #include <robosar_controller/RobosarControllerAction.h>
 
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include <tf/tf.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Vector3Stamped.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
 #include <ackermann_msgs/AckermannDriveStamped.h>
@@ -175,14 +177,7 @@ public:
 
     geometry_msgs::TransformStamped tf;
     tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
-
-    tf::Quaternion q(tf.transform.rotation.x,
-        tf.transform.rotation.y,
-        tf.transform.rotation.z,-
-        tf.transform.rotation.w);
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
+    double yaw = tf::getYaw(tf.transform.rotation);
     ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
 
     if(rotate_to_global_plan)
@@ -223,9 +218,7 @@ public:
         double alpha = atan(vd_y/vd_x);
 
         v_linear_last = vd;
-        cmd_vel_.linear.x = vd;
-        cmd_vel_.angular.z = alpha;
-        pub_vel_.publish(cmd_vel_);
+        publishVelocitiesGlobal(vd_x,vd_y,alpha);
       }
       else {
         //Path list is empty -> goal should have been reached
@@ -234,6 +227,7 @@ public:
         cmd_vel_.angular.z = 0.0;
         pub_vel_.publish(cmd_vel_);
         goal_reached_ = true;
+        ROS_INFO("Stopping!!");
       }
 
     }
@@ -277,6 +271,37 @@ public:
         return false;
       }
 
+  }
+
+  void publishVelocitiesGlobal(double vx, double vy, double theta) {
+
+    //Transform commands from global frame to robot coordinate system
+    geometry_msgs::Vector3Stamped cmd_global, cmd_robot;
+    cmd_global.header.frame_id = map_frame_id_;
+    cmd_global.header.stamp = ros::Time::now();
+    cmd_global.vector.x = vx;
+    cmd_global.vector.y = vy;
+
+    try
+    {
+      geometry_msgs::TransformStamped tfGeom;
+      tfGeom = tf_buffer_.lookupTransform(robot_frame_id_, cmd_global.header.frame_id, cmd_global.header.stamp, ros::Duration(1.0));
+      tf2::doTransform(cmd_global,cmd_robot,tfGeom);
+    } catch (tf2::TransformException &ex){
+      ROS_ERROR("%s",ex.what());
+      cmd_robot.vector.x = 0.0f;
+      cmd_robot.vector.y = 0.0f;
+    }
+
+    // Apply limits
+
+
+    cmd_vel_.linear = cmd_robot.vector;
+    cmd_vel_.angular.z = theta;
+    // Remove other DOFs
+    cmd_vel_.linear.y = 0.0; cmd_vel_.linear.z  = 0.0;
+    cmd_vel_.angular.x = 0.0; cmd_vel_.angular.y = 0.0;
+    pub_vel_.publish(cmd_vel_);
   }
 
 
