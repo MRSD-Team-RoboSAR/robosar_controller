@@ -52,7 +52,6 @@ private:
   unsigned idx_;
   bool goal_reached_;
   geometry_msgs::Twist cmd_vel_;
-  ackermann_msgs::AckermannDriveStamped cmd_acker_;
 protected:
 
   actionlib::SimpleActionServer<robosar_controller::RobosarControllerAction> as_; // NodeHandle instance must be created before this line. Otherwise strange error occurs.
@@ -65,39 +64,12 @@ public:
 
   ControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&ControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(0.3), pos_tol_(0.1), idx_(0),goal_reached_(true), 
+    ld_(1.0), v_max_(0.3), v_(v_max_), w_max_(0.3), pos_tol_(0.1), idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
     time_last(0.0), rotate_to_global_plan(false)
   {
-    // Get parameters from the parameter server
-    nh_private_.param<double>("wheelbase", L_, 1.0);
-    nh_private_.param<double>("lookahead_distance", ld_, 1.0);
-    //nh_private_.param<double>("linear_velocity", v_, 0.1);
-    nh_private_.param<double>("max_rotational_velocity", w_max_, 1.0);
-    nh_private_.param<double>("position_tolerance", pos_tol_, 0.5);
-    nh_private_.param<double>("steering_angle_velocity", delta_vel_, 100.0);
-    nh_private_.param<double>("acceleration", acc_, 100.0);
-    nh_private_.param<double>("jerk", jerk_, 100.0);
-    nh_private_.param<double>("steering_angle_limit", delta_max_, 1.57);
-    nh_private_.param<std::string>("map_frame_id", map_frame_id_, "map");
-    // Frame attached to midpoint of rear axle (for front-steered vehicles).
-    nh_private_.param<std::string>("robot_frame_id", robot_frame_id_, "robot_0/base_link");
-    // Lookahead frame moving along the path as the vehicle is moving.
-    nh_private_.param<std::string>("lookahead_frame_id", lookahead_frame_id_, "robot_0/base_laser_link");
-    // Frame attached to midpoint of front axle (for front-steered vehicles).
-    nh_private_.param<std::string>("ackermann_frame_id", acker_frame_id_, "robot_0/base_link");
-
-    // Populate messages with static data
-    lookahead_.header.frame_id = robot_frame_id_;
-    lookahead_.child_frame_id = lookahead_frame_id_;
-
-    cmd_acker_.header.frame_id = acker_frame_id_;
-    cmd_acker_.drive.steering_angle_velocity = delta_vel_;
-    cmd_acker_.drive.acceleration = acc_;
-    cmd_acker_.drive.jerk = jerk_;
-
-
+    
     as_.start();
   }
 
@@ -294,7 +266,23 @@ public:
     }
 
     // Apply limits
+    if ( std::isnan(cmd_robot.vector.x) || std::isnan(cmd_robot.vector.y) || std::isnan(theta) )
+    {
+      ROS_WARN("[RoboSAR Controller]: Output velocity contains NaN!");
+      theta = 0.0; cmd_robot.vector.x = 0.0f; cmd_robot.vector.y = 0.0f;
+    }
+    else if (fabs(cmd_robot.vector.x) > v_max_)
+    {
+        ROS_WARN("[RoboSAR Controller]: Output velocity exceeds max value, clipping!");
+        cmd_robot.vector.x = copysignf(v_max_,cmd_robot.vector.x);
+    }
+    else if (fabs(theta) > w_max_)
+    {
+      ROS_WARN("[RoboSAR Controller]: Angular velocity exceeds max value, clipping!");
+        theta = copysign(w_max_,theta);
+    }
 
+    ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f",cmd_robot.vector.x,theta);
 
     cmd_vel_.linear = cmd_robot.vector;
     cmd_vel_.angular.z = theta;
@@ -305,32 +293,6 @@ public:
   }
 
 
-  KDL::Frame transformToBaseLink(const geometry_msgs::Pose& pose,
-                                              const geometry_msgs::Transform& tf)
-  {
-    // Pose in global (map) frame
-    KDL::Frame F_map_pose(KDL::Rotation::Quaternion(pose.orientation.x,
-                                                    pose.orientation.y,
-                                                    pose.orientation.z,
-                                                    pose.orientation.w),
-                          KDL::Vector(pose.position.x,
-                                      pose.position.y,
-                                      pose.position.z));
-
-    // Robot (base_link) in global (map) frame
-    KDL::Frame F_map_tf(KDL::Rotation::Quaternion(tf.rotation.x,
-                                                  tf.rotation.y,
-                                                  tf.rotation.z,
-                                                  tf.rotation.w),
-                        KDL::Vector(tf.translation.x,
-                                    tf.translation.y,
-                                    tf.translation.z));
-
-    // TODO: See how the above conversions can be done more elegantly
-    // using tf2_kdl and tf2_geometry_msgs
-
-    return F_map_tf.Inverse()*F_map_pose;
-  }
 
   //! Helper founction for computing eucledian distances in the x-y plane.
   template<typename T1, typename T2>
