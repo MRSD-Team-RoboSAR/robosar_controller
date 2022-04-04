@@ -18,6 +18,8 @@
 
 #include <kdl/frames.hpp>
 #include <robosar_controller/PurePursuitConfig.h>
+#include <angles/angles.h>
+
 class ControllerAction
 {
 private:
@@ -61,7 +63,7 @@ public:
 
   ControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&ControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), idx_(0),goal_reached_(true), 
+    ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(0.3), pos_tol_(0.1), idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
     time_last(0.0), rotate_to_global_plan(false)
@@ -168,9 +170,26 @@ public:
 
   void computeVelocities(const ros::TimerEvent&)
   {
+
+    // Get current pose
+
+    geometry_msgs::TransformStamped tf;
+    tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
+
+    tf::Quaternion q(tf.transform.rotation.x,
+        tf.transform.rotation.y,
+        tf.transform.rotation.z,-
+        tf.transform.rotation.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
+
     if(rotate_to_global_plan)
     {
-
+        double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);
+        ROS_INFO("Shortest angle to goal %f",angle_to_global_plan);
+        rotate_to_global_plan = rotateToOrientation(angle_to_global_plan,0.1);
     }
     else {
 
@@ -189,17 +208,6 @@ public:
       ROS_INFO("Popped %d velocities",it);
 
       if(!path_.empty()){
-        geometry_msgs::TransformStamped tf;
-        tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
-
-        tf::Quaternion q(tf.transform.rotation.x,
-            tf.transform.rotation.y,
-            tf.transform.rotation.z,-
-            tf.transform.rotation.w);
-        tf::Matrix3x3 m(q);
-        double roll, pitch, yaw;
-        m.getRPY(roll, pitch, yaw);
-        ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
 
         std::vector<double> coordinates = path_.front();
         std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,v_linear_last}; //TODO getting current v value
@@ -231,6 +239,44 @@ public:
     }
 
    
+  }
+
+  double calculateGlobalPlanAngle(double x, double y, double yaw) {
+
+      //Calculate the angles between robotpose and global plan point pose
+      double angle_to_goal = atan2(path_.front()[1] - y,
+                                        path_.front()[0] - x);
+
+      
+      return angles::shortest_angular_distance(yaw, angle_to_goal);
+  }
+
+  bool rotateToOrientation(double angle, double accuracy) {
+
+      if(fabs(angle)>accuracy)
+      {
+          // Nothing fancy just rotate with a fixed velocity
+          cmd_vel_.linear.x = 0.0;
+          if(angle < 0)
+          {
+            cmd_vel_.angular.z = -w_max_;
+          }
+          else
+          {
+            cmd_vel_.angular.z = w_max_;
+          }
+          pub_vel_.publish(cmd_vel_);
+          return true;
+      }
+      else
+      {
+        ROS_INFO("Rotate to orientation complete!");
+        cmd_vel_.linear.x = 0.0;
+        cmd_vel_.angular.z = 0.0;
+        pub_vel_.publish(cmd_vel_);
+        return false;
+      }
+
   }
 
 
