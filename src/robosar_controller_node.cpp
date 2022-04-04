@@ -181,9 +181,7 @@ public:
       // Synchronise controller time with path_time
       double path_time = path_.front()[2];
       int it=0;
-      if(time_elapsed<path_time)
-        return;
-      while(!path_.empty() && time_elapsed>=path_.front()[2])
+      while(!path_.empty() && time_elapsed>path_time)
       {
         it++;
         path_.pop();
@@ -206,10 +204,9 @@ public:
         std::vector<double> coordinates = path_.front();
         std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,v_linear_last}; //TODO getting current v value
 
-        double time_next = coordinates[2];
         double dx = coordinates[0] - currState[0];
         double dy = coordinates[1] - currState[1];
-        double v_f = sqrt(dx*dx + dy*dy)/(time_next-time_last);
+        double v_f = sqrt(dx*dx + dy*dy)/(controller_period_s);
         double theta_f = atan(dy/dx);
 
         double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
@@ -218,7 +215,6 @@ public:
         double alpha = atan(vd_y/vd_x);
 
         v_linear_last = vd;
-        time_last = time_next;
         cmd_vel_.linear.x = vd;
         cmd_vel_.angular.z = alpha;
         pub_vel_.publish(cmd_vel_);
