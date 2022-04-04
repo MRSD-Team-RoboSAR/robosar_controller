@@ -73,7 +73,7 @@ public:
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
     time_last(0.0), rotate_to_global_plan(true)
   {
-    
+    robot_frame_id_ = action_name_ + "/base_link";
     as_.start();
   }
 
@@ -85,11 +85,12 @@ public:
 
     // publish info to the console for the user
     ROS_INFO("Executing Action");
+    ROS_INFO_STREAM("The command velocity topic:/robosar_agent_bringup_node/"<<action_name_<<"/cmd_vel");
     controller_it = 0; //Setting controller iterator to 0 every time action is called
     receivePath(goal->path);
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&ControllerAction::computeVelocities, this, _1));
-    pub_vel_ = nh_.advertise<geometry_msgs::Twist>(goal->agent_name+"/cmd_vel", 1);
-
+    //pub_vel_ = nh_.advertise<geometry_msgs::Twist>(action_name_+"/cmd_vel", 1);
+    pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/"+action_name_+"/cmd_vel", 1);
     while(!goal_reached_)
     {
       if (as_.isPreemptRequested() || !ros::ok())
@@ -166,36 +167,70 @@ public:
       ROS_INFO("Computing Velocity");
       controller_it++;
       double time_elapsed = controller_it*controller_period_s;
-
+      ROS_INFO("Time elapsed: %f",time_elapsed);
       // Synchronise controller time with path_time
-      double path_time = path_.front()[2];
       int it=0;
-      while(!path_.empty() && time_elapsed>path_time) {
+      while(!path_.empty() && path_.size()!=1 && time_elapsed>path_.front()[2]) {
         it++;
         // Update time last
         time_last = path_.front()[2];
         path_.pop();
       }
       ROS_INFO("Popped %d velocities",it);
-
+      double dx,dy;
       if(!path_.empty()){
 
         std::vector<double> coordinates = path_.front();
         std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,v_linear_last}; //TODO getting current v value
 
+        double d           = 0.05;
+        dx = coordinates[0] - currState[0] ;
+        dy = coordinates[1] - currState[1]  ;
+
+
         double time_next = coordinates[2];
-        double dx = coordinates[0] - currState[0];
-        double dy = coordinates[1] - currState[1];
+        double ucap[2]     = {0.0}    ;
+        //double kp          = sqrt(dx*dx + dy*dy)/(time_next-time_last)      ;
+        double kp          = 0.05      ;
+        ucap[0]            = kp*dx   ; ucap[1]           = kp*dy;
+        ROS_INFO("DX: %f, dy: %f",dx,dy);
+        double nval        = sqrt(dx*dx + dy*dy)+0.01;
+        if(nval>-0.001){
+          ucap[0] = ucap[0]/nval;
+          ucap[1] = ucap[1]/nval;
+          //double d           = 0.05;
+          cmd_vel_.linear.x  = (ucap[0]*cos(yaw) + ucap[1]*sin(yaw));
+          cmd_vel_.angular.z = ((-ucap[0]*sin(yaw) + ucap[1]*cos(yaw))/d);
+
+          pub_vel_.publish(cmd_vel_);
+        }
+          
+        else{
+          cmd_vel_.linear.x  = 0.0;
+          cmd_vel_.angular.z = 0.0;
+          pub_vel_.publish(cmd_vel_);
+
+        }
+
+
+
+      /*
+        double time_next = coordinates[2];
+        dx = coordinates[0] - currState[0];
+        dy = coordinates[1] - currState[1];
         double v_f = sqrt(dx*dx + dy*dy)/(time_next-time_last);
         double theta_f = atan(dy/dx);
 
         double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
         double vd_y = v_f*sin(theta_f) - currState[3]*sin(currState[2]);
         double vd = sqrt(vd_x*vd_x + vd_y*vd_y);
-        double alpha = atan(vd_y/vd_x);
+        double alpha = (atan(vd_y/vd_x))/(time_next-time_last);
 
         v_linear_last = vd;
-        publishVelocitiesGlobal(vd_x,vd_y,alpha);
+        publishVelocitiesGlobal(v_f*cos(theta_f),v_f*sin(theta_f),alpha);*/
+        if(dx<=0.01 && dy<=0.01){
+        path_.pop();
+        }
       }
       else {
         //Path list is empty -> goal should have been reached
@@ -206,7 +241,7 @@ public:
         goal_reached_ = true;
         ROS_INFO("Stopping!!");
       }
-
+      
     }
 
    
@@ -291,6 +326,7 @@ public:
                                                                       path_.front()[0],path_.front()[1],path_.front()[2]);
 
     cmd_vel_.linear = cmd_robot.vector;
+    v_linear_last = cmd_robot.vector.x;
     cmd_vel_.angular.z = theta;
     // Remove other DOFs
     cmd_vel_.linear.y = 0.0; cmd_vel_.linear.z  = 0.0;
