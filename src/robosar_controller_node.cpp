@@ -64,10 +64,10 @@ public:
 
   ControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&ControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(1.0), v_max_(0.3), v_(v_max_), w_max_(0.3), pos_tol_(0.1), idx_(0),goal_reached_(true), 
+    ld_(1.0), v_max_(0.5), v_(v_max_), w_max_(0.3), pos_tol_(0.1), idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
-    time_last(0.0), rotate_to_global_plan(false)
+    time_last(0.0), rotate_to_global_plan(true)
   {
     
     as_.start();
@@ -152,8 +152,7 @@ public:
     double yaw = tf::getYaw(tf.transform.rotation);
     ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
 
-    if(rotate_to_global_plan)
-    {
+    if(rotate_to_global_plan) {
         double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);
         ROS_INFO("Shortest angle to goal %f",angle_to_global_plan);
         rotate_to_global_plan = rotateToOrientation(angle_to_global_plan,0.1);
@@ -167,9 +166,10 @@ public:
       // Synchronise controller time with path_time
       double path_time = path_.front()[2];
       int it=0;
-      while(!path_.empty() && time_elapsed>path_time)
-      {
+      while(!path_.empty() && time_elapsed>path_time) {
         it++;
+        // Update time last
+        time_last = path_.front()[2];
         path_.pop();
       }
       ROS_INFO("Popped %d velocities",it);
@@ -179,9 +179,10 @@ public:
         std::vector<double> coordinates = path_.front();
         std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,v_linear_last}; //TODO getting current v value
 
+        double time_next = coordinates[2];
         double dx = coordinates[0] - currState[0];
         double dy = coordinates[1] - currState[1];
-        double v_f = sqrt(dx*dx + dy*dy)/(controller_period_s);
+        double v_f = sqrt(dx*dx + dy*dy)/(time_next-time_last);
         double theta_f = atan(dy/dx);
 
         double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
@@ -282,7 +283,8 @@ public:
         theta = copysign(w_max_,theta);
     }
 
-    ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f",cmd_robot.vector.x,theta);
+    ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",cmd_robot.vector.x,theta,
+                                                                      path_.front()[0],path_.front()[1],path_.front()[2]);
 
     cmd_vel_.linear = cmd_robot.vector;
     cmd_vel_.angular.z = theta;
