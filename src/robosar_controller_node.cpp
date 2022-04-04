@@ -180,7 +180,8 @@ public:
       // Synchronise controller time with path_time
       double path_time = path_.front()[2];
       int it=0;
-      while(!path_.empty() && time_elapsed>path_time)
+      
+      while(!path_.empty() && time_elapsed>path_.front()[2])
       {
         it++;
         path_.pop();
@@ -213,6 +214,7 @@ public:
         double vd = sqrt(vd_x*vd_x + vd_y*vd_y);
         double alpha = atan(vd_y/vd_x);
 
+        v_linear_last = vd;
         cmd_vel_.linear.x = vd;
         cmd_vel_.angular.z = alpha;
         pub_vel_.publish(cmd_vel_);
