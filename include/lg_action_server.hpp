@@ -56,6 +56,7 @@ private:
   unsigned idx_;
   bool goal_reached_;
   geometry_msgs::Twist cmd_vel_;
+  nav_msgs::Path cartesian_path_;
 protected:
 
   actionlib::SimpleActionServer<robosar_controller::RobosarControllerAction> as_; // NodeHandle instance must be created before this line. Otherwise strange error occurs.
@@ -129,6 +130,15 @@ public:
         coordinates.push_back(new_path.poses[idx_].pose.position.y);
         coordinates.push_back(new_path.poses[idx_].pose.position.z);
         path_.push(coordinates);
+        
+        geometry_msgs::PoseStamped cartesian_pose;
+        cartesian_pose.pose.position.x = new_path.poses[idx_].pose.position.x;
+        cartesian_pose.pose.position.y = new_path.poses[idx_].pose.position.y;
+        
+        if(idx_ == 0 || !checkIfPosesEqual(cartesian_pose,cartesian_path_.poses[cartesian_path_.poses.size()-1]) )
+        {
+          cartesian_path_.poses.push_back(cartesian_pose);
+        }
       }
        goal_reached_ = false;
     }
@@ -143,6 +153,21 @@ public:
     // Callbacks are non-interruptible, so this will
     // not interfere with velocity computation callback.
     ROS_INFO("Received path!");
+  }
+
+  bool compare_float(float x, float y, float epsilon = 0.01f){
+   if(fabs(x - y) < epsilon)
+      return true; //they are same
+    return false; //they are not same
+  }
+
+  bool checkIfPosesEqual(geometry_msgs::PoseStamped pose1, geometry_msgs::PoseStamped pose2) {
+
+    if(compare_float(pose1.pose.position.x,pose2.pose.position.x) 
+          && compare_float(pose1.pose.position.y,pose2.pose.position.y))
+      return true;
+    else
+      return false;
   }
 
 
