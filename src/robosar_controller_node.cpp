@@ -31,7 +31,7 @@ private:
   std::string map_frame_id_, robot_frame_id_, lookahead_frame_id_, acker_frame_id_;
 
   bool rotate_to_global_plan;
-  double v_linear_last;
+  double v_linear_last, time_last;
   unsigned int controller_it;
   double controller_period_s;
   // Vehicle parameters
@@ -64,7 +64,7 @@ public:
     ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
-    rotate_to_global_plan(true)
+    time_last(0.0), rotate_to_global_plan(false)
   {
     // Get parameters from the parameter server
     nh_private_.param<double>("wheelbase", L_, 1.0);
@@ -105,6 +105,7 @@ public:
 
     // publish info to the console for the user
     ROS_INFO("Executing Action");
+    controller_it = 0; //Setting controller iterator to 0 every time action is called
     receivePath(goal->path);
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&ControllerAction::computeVelocities, this, _1));
     pub_vel_ = nh_.advertise<geometry_msgs::Twist>(goal->agent_name+"/cmd_vel", 1);
@@ -180,8 +181,9 @@ public:
       // Synchronise controller time with path_time
       double path_time = path_.front()[2];
       int it=0;
-      
-      while(!path_.empty() && time_elapsed>path_.front()[2])
+      if(time_elapsed<path_time)
+        return;
+      while(!path_.empty() && time_elapsed>=path_.front()[2])
       {
         it++;
         path_.pop();
@@ -204,9 +206,10 @@ public:
         std::vector<double> coordinates = path_.front();
         std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,v_linear_last}; //TODO getting current v value
 
+        double time_next = coordinates[2];
         double dx = coordinates[0] - currState[0];
         double dy = coordinates[1] - currState[1];
-        double v_f = sqrt(dx*dx + dy*dy);
+        double v_f = sqrt(dx*dx + dy*dy)/(time_next-time_last);
         double theta_f = atan(dy/dx);
 
         double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
@@ -215,6 +218,7 @@ public:
         double alpha = atan(vd_y/vd_x);
 
         v_linear_last = vd;
+        time_last = time_next;
         cmd_vel_.linear.x = vd;
         cmd_vel_.angular.z = alpha;
         pub_vel_.publish(cmd_vel_);
