@@ -140,11 +140,15 @@ public:
         cartesian_pose.pose.position.y = new_path.poses[idx_].pose.position.y;
         
         // Add points to the goal queue
-        if(idx_!=0 && checkIfPosesEqual(cartesian_pose,cartesian_path_.poses.back()) && !checkIfPosesEqual(cartesian_pose,goalQueue.back()))
+        if(idx_!=0 && checkIfPosesEqual(cartesian_pose,cartesian_path_.poses.back()))
         {
-          goalQueue.push(cartesian_pose);
+          if(goalQueue.empty()){
+            goalQueue.push(cartesian_pose);
+          }
+          else if(!checkIfPosesEqual(cartesian_pose,goalQueue.back())){
+            goalQueue.push(cartesian_pose);
+          }
         }
-
         // Add final goal too
         if(idx_ == new_path.poses.size()-1 &&  !checkIfPosesEqual(cartesian_pose,goalQueue.back())) {
           goalQueue.push(cartesian_pose);
