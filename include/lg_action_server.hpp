@@ -265,10 +265,9 @@ public:
   void cycleWaypointsUsingTime() {
 
     double time_elapsed = controller_it*controller_period_s;
-    double path_time = path_.front()[2];
     int it=0;
 
-    while(!path_.empty() && time_elapsed>path_time) {
+    while(!path_.empty() && path_.size()!=1 && time_elapsed>path_.front()[2]) {
       it++;
       // Update time last
       time_last = path_.front()[2];
