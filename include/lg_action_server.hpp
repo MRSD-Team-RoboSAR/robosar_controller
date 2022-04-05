@@ -56,6 +56,7 @@ private:
   std::queue<geometry_msgs::PoseStamped> goalQueue;
   unsigned pp_idx_;
   bool goal_reached_;
+  bool stop_;
   geometry_msgs::Twist cmd_vel_;
   nav_msgs::Path cartesian_path_;
 protected:
@@ -73,7 +74,7 @@ public:
     ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
-    time_last(0.0), rotate_to_global_plan(true)
+    time_last(0.0), rotate_to_global_plan(true), stop_(false)
   {
     // Populate messages with static data
     lookahead_.header.frame_id = robot_frame_id_;
@@ -215,7 +216,17 @@ public:
       if(!path_.empty()){
 
         // TODO @Charvi linear velocity
-        v_ = 0.0;
+        if(compare_float(path_.front()[0],goalQueue.front().pose.position.x) && compare_float(path_.front()[1],goalQueue.front().pose.position.y)){
+          v_ = 0.0;
+          stop_ = true;
+        }
+        else{
+          if(stop_ == true){
+            stop_ = false;
+            goalQueue.pop();
+          }
+          v_ = copysign(v_max_, v_);
+        } 
         cmd_vel_.linear.x = v_;
 
          // Compute the angular velocity.
