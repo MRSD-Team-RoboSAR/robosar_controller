@@ -38,8 +38,9 @@ private:
   geometry_msgs::TransformStamped lookahead_;
   std::string map_frame_id_, robot_frame_id_, lookahead_frame_id_, acker_frame_id_;
 
+  double goal_threshold;
   bool rotate_to_global_plan;
-  double v_linear_last, time_last;
+  double v_linear_last;
   unsigned int controller_it;
   double controller_period_s;
   // Vehicle parameters
@@ -74,7 +75,7 @@ public:
     ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
-    time_last(0.0), rotate_to_global_plan(true), stop_(false)
+    rotate_to_global_plan(true), stop_(false), goal_threshold(0.1)
   {
     // Populate messages with static data
     robot_frame_id_ = action_name_ + "/base_link";
@@ -115,7 +116,6 @@ public:
       ROS_INFO("%s: Succeeded", action_name_.c_str());
       // set the action state to succeeded
       as_.setSucceeded(result_);
-      controller_timer.stop();
     }
   }
 
@@ -124,7 +124,7 @@ public:
   }
   void receivePath(nav_msgs::Path new_path)
   {
-    ROS_INFO("Receiving path!");
+    ROS_INFO("[RoboSAR Controller] Receiving path!");
 
     if(new_path.poses.size()>0)
     {
@@ -172,7 +172,8 @@ public:
     // path is feasible.
     // Callbacks are non-interruptible, so this will
     // not interfere with velocity computation callback.
-    ROS_INFO("Received path!");
+    ROS_INFO("[RoboSAR Controller] Trajectory size %ld Cartesian path size %ld goal queue %ld",
+                                          path_.size(), cartesian_path_.poses.size(), goalQueue.size());
 
     // Reset variables
     pp_idx_ = 0;
@@ -214,13 +215,21 @@ public:
       ROS_INFO("Computing Velocity");
       ppProcessLookahead(tf.transform);
 
-      controller_it++;
       cycleWaypointsUsingTime();
+      controller_it++;
 
       if(!path_.empty()){
 
         // TODO @Charvi linear velocity
-        if(compare_float(path_.front()[0],goalQueue.front().pose.position.x) && compare_float(path_.front()[1],goalQueue.front().pose.position.y)){
+        // Distance based check for the final goal
+        if(checkifGoalReached(tf.transform)) {
+          v_ = 0.0;
+          stop_ = true;
+          path_.pop();
+        }
+        // Time based check for the intermediate goals
+        else if(compare_float(path_.front()[0],goalQueue.front().pose.position.x) 
+            && compare_float(path_.front()[1],goalQueue.front().pose.position.y)){
           v_ = 0.0;
           stop_ = true;
         }
@@ -229,14 +238,9 @@ public:
             stop_ = false;
             goalQueue.pop();
           }
+          // continue moving with max velocity
           v_ = copysign(v_max_, v_);
         } 
-        //couldn't add in previous if block as for this condition, first condition can be true
-        if(compare_float(tf.transform.translation.x,goalQueue.back().pose.position.x) && compare_float(tf.transform.translation.y,goalQueue.front().pose.position.y)){
-          v_ = 0.0;
-          stop_ = true;
-          path_.pop();
-        }
         cmd_vel_.linear.x = v_;
 
          // Compute the angular velocity.
@@ -257,10 +261,15 @@ public:
         //Stop moving
         cmd_vel_.linear.x = 0.0;
         cmd_vel_.angular.z = 0.0;
-        pub_vel_.publish(cmd_vel_);
         goal_reached_ = true;
         ROS_INFO("Stopping!!");
       }
+
+      // Publish velocities!
+      pub_vel_.publish(cmd_vel_);
+
+      ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",cmd_vel_.linear.x, cmd_vel_.angular.z,
+                                                                      path_.front()[0],path_.front()[1],path_.front()[2]);
 
       // Publish the lookahead target transform.
       lookahead_.header.stamp = ros::Time::now();
@@ -279,11 +288,9 @@ public:
 
     while(!path_.empty() && path_.size()!=1 && time_elapsed>path_.front()[2]) {
       it++;
-      // Update time last
-      time_last = path_.front()[2];
       path_.pop();
     }
-    ROS_INFO("Popped %d velocities",it);
+    ROS_INFO("[RoboSAR Controller] Popped %d velocities with time elapsed %f",it,time_elapsed);
 
   }
   void ppProcessLookahead(geometry_msgs::Transform current_pose) {
@@ -457,6 +464,14 @@ public:
   return F_map_tf.Inverse()*F_map_pose;
 }
 
+  bool checkifGoalReached(geometry_msgs::Transform current_pose) {
+
+    double distance_to_goal = distance(current_pose.translation, goalQueue.back().pose.position);
+    if(distance_to_goal <= goal_threshold)
+      return true;
+    else 
+      return false; 
+  }
 
 
   //! Helper founction for computing eucledian distances in the x-y plane.
