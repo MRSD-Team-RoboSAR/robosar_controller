@@ -70,7 +70,7 @@ public:
 
   LGControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&LGControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(1.0), v_max_(0.5), v_(v_max_), w_max_(0.3), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
+    ld_(1.0), v_max_(0.5), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
     time_last(0.0), rotate_to_global_plan(true)
@@ -225,22 +225,17 @@ public:
 
       if(!path_.empty()){
 
-        std::vector<double> coordinates = path_.front();
-        std::vector<double> currState{tf.transform.translation.x,tf.transform.translation.y,yaw,v_linear_last}; //TODO getting current v value
+        // TODO @Charvi linear velocity
+        v_ = 0.0;
+        cmd_vel_.linear.x = v_;
+        
+         // Compute the angular velocity.
+        // Lateral error is the y-value of the lookahead point (in base_link frame)
+        double yt = lookahead_.transform.translation.y;
+        double ld_2 = ld_ * ld_;
+        cmd_vel_.angular.z = std::min( 2*v_ / ld_2 * yt, w_max_ );
 
-        double time_next = coordinates[2];
-        double dx = coordinates[0] - currState[0];
-        double dy = coordinates[1] - currState[1];
-        double v_f = sqrt(dx*dx + dy*dy)/(time_next-time_last);
-        double theta_f = atan(dy/dx);
 
-        double vd_x = v_f*cos(theta_f) - currState[3]*cos(currState[2]);
-        double vd_y = v_f*sin(theta_f) - currState[3]*sin(currState[2]);
-        double vd = sqrt(vd_x*vd_x + vd_y*vd_y);
-        double alpha = atan(vd_y/vd_x);
-
-        v_linear_last = vd;
-        publishVelocitiesGlobal(vd_x,vd_y,alpha);
       }
       else {
         //Path list is empty -> goal should have been reached
@@ -279,6 +274,37 @@ public:
 
         break;
       }
+    }
+
+    if (!cartesian_path_.poses.empty() && pp_idx_ >= cartesian_path_.poses.size()) {
+
+        // We need to extend the lookahead distance
+        // beyond the goal point.
+      
+        // This is the pose of the goal w.r.t. the base_link frame
+        KDL::Frame F_bl_end = transformToBaseLink(cartesian_path_.poses.back().pose, current_pose);
+
+        // Find the intersection between the circle of radius ld
+        // centered at the robot (origin)
+        // and the line defined by the last path pose
+        double roll, pitch, yaw;
+        F_bl_end.M.GetRPY(roll, pitch, yaw);
+        double k_end = tan(yaw); // Slope of line defined by the last path pose
+        double l_end = F_bl_end.p.y() - k_end * F_bl_end.p.x();
+        double a = 1 + k_end * k_end;
+        double b = 2 * l_end;
+        double c = l_end * l_end - ld_ * ld_;
+        double D = sqrt(b*b - 4*a*c);
+        double x_ld = (-b + copysign(D,v_)) / (2*a);
+        double y_ld = k_end * x_ld + l_end;
+        
+        lookahead_.transform.translation.x = x_ld;
+        lookahead_.transform.translation.y = y_ld;
+        lookahead_.transform.translation.z = F_bl_end.p.z();
+        F_bl_end.M.GetQuaternion(lookahead_.transform.rotation.x,
+                                 lookahead_.transform.rotation.y,
+                                 lookahead_.transform.rotation.z,
+                                 lookahead_.transform.rotation.w);
     }
 
   }
