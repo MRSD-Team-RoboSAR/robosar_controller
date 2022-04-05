@@ -132,7 +132,16 @@ public:
         std::vector<double> coordinates;
         coordinates.push_back(new_path.poses[idx_].pose.position.x);
         coordinates.push_back(new_path.poses[idx_].pose.position.y);
-        coordinates.push_back(new_path.poses[idx_].pose.position.z);
+        coordinates.push_back(new_path.poses[idx_].pose.position.z); // time
+        if(idx_!= new_path.poses.size()-1)
+        {
+          coordinates.push_back(atan2(new_path.poses[idx_+1].pose.position.y - new_path.poses[idx_].pose.position.y,
+                                        new_path.poses[idx_+1].pose.position.x - new_path.poses[idx_].pose.position.x)); // yaw
+        }
+        else 
+        {
+          coordinates.push_back(0.0); // Dont care
+        }
         path_.push(coordinates);
         
         geometry_msgs::PoseStamped cartesian_pose;
@@ -368,9 +377,7 @@ public:
   double calculateGlobalPlanAngle(double x, double y, double yaw) {
 
       //Calculate the angles between robotpose and global plan point pose
-      double angle_to_goal = atan2(path_.front()[1] - y,
-                                        path_.front()[0] - x);
-
+      double angle_to_goal = path_.front()[3];
       
       return angles::shortest_angular_distance(yaw, angle_to_goal);
   }
