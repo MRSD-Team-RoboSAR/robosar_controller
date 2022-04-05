@@ -54,7 +54,7 @@ private:
   double delta_, delta_vel_, acc_, jerk_, delta_max_;
   std::queue<std::vector<double>> path_;
   std::queue<std::vector<double>> goalQueue;
-  unsigned idx_;
+  unsigned pp_idx_;
   bool goal_reached_;
   geometry_msgs::Twist cmd_vel_;
   nav_msgs::Path cartesian_path_;
@@ -70,12 +70,14 @@ public:
 
   LGControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&LGControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(1.0), v_max_(0.5), v_(v_max_), w_max_(0.3), pos_tol_(0.1), idx_(0),goal_reached_(true), 
+    ld_(1.0), v_max_(0.5), v_(v_max_), w_max_(0.3), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
     time_last(0.0), rotate_to_global_plan(true)
   {
-    
+    // Populate messages with static data
+    lookahead_.header.frame_id = robot_frame_id_;
+    lookahead_.child_frame_id = lookahead_frame_id_;
     as_.start();
   }
 
@@ -169,6 +171,9 @@ public:
     // Callbacks are non-interruptible, so this will
     // not interfere with velocity computation callback.
     ROS_INFO("Received path!");
+
+    // Reset variables
+    pp_idx_ = 0;
   }
 
   bool compare_float(float x, float y, float epsilon = 0.01f){
@@ -205,6 +210,8 @@ public:
     else {
 
       ROS_INFO("Computing Velocity");
+      ppProcessLookahead(tf.transform);
+
       controller_it++;
       double time_elapsed = controller_it*controller_period_s;
 
@@ -251,6 +258,32 @@ public:
     }
 
    
+  }
+
+  void ppProcessLookahead(geometry_msgs::Transform current_pose) {
+
+    for (; pp_idx_ < cartesian_path_.poses.size(); pp_idx_++)
+    {
+      if (distance(cartesian_path_.poses[pp_idx_].pose.position, current_pose.translation) > ld_)
+      {
+
+        // Transformed lookahead to base_link frame is lateral error
+        KDL::Frame F_bl_ld = transformToBaseLink(cartesian_path_.poses[pp_idx_].pose, current_pose);
+        lookahead_.transform.translation.x = F_bl_ld.p.x();
+        lookahead_.transform.translation.y = F_bl_ld.p.y();
+        lookahead_.transform.translation.z = F_bl_ld.p.z();
+        F_bl_ld.M.GetQuaternion(lookahead_.transform.rotation.x,
+                                lookahead_.transform.rotation.y,
+                                lookahead_.transform.rotation.z,
+                                lookahead_.transform.rotation.w);
+        
+        // TODO: See how the above conversion can be done more elegantly
+        // using tf2_kdl and tf2_geometry_msgs
+
+        break;
+      }
+    }
+
   }
 
   double calculateGlobalPlanAngle(double x, double y, double yaw) {
@@ -338,6 +371,34 @@ public:
     cmd_vel_.angular.x = 0.0; cmd_vel_.angular.y = 0.0;
     pub_vel_.publish(cmd_vel_);
   }
+
+
+  KDL::Frame transformToBaseLink(const geometry_msgs::Pose& pose,
+                                            const geometry_msgs::Transform& tf)
+{
+  // Pose in global (map) frame
+  KDL::Frame F_map_pose(KDL::Rotation::Quaternion(pose.orientation.x,
+                                                  pose.orientation.y,
+                                                  pose.orientation.z,
+                                                  pose.orientation.w),
+                        KDL::Vector(pose.position.x,
+                                    pose.position.y,
+                                    pose.position.z));
+
+  // Robot (base_link) in global (map) frame
+  KDL::Frame F_map_tf(KDL::Rotation::Quaternion(tf.rotation.x,
+                                                tf.rotation.y,
+                                                tf.rotation.z,
+                                                tf.rotation.w),
+                      KDL::Vector(tf.translation.x,
+                                  tf.translation.y,
+                                  tf.translation.z));
+
+  // TODO: See how the above conversions can be done more elegantly
+  // using tf2_kdl and tf2_geometry_msgs
+
+  return F_map_tf.Inverse()*F_map_pose;
+}
 
 
 
