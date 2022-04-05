@@ -227,6 +227,12 @@ public:
           }
           v_ = copysign(v_max_, v_);
         } 
+        //couldn't add in previous if block as for this condition, first condition can be true
+        if(compare_float(tf.transform.translation.x,goalQueue.back().pose.position.x) && compare_float(tf.transform.translation.y,goalQueue.front().pose.position.y)){
+          v_ = 0.0;
+          stop_ = true;
+          path_.pop();
+        }
         cmd_vel_.linear.x = v_;
 
          // Compute the angular velocity.
