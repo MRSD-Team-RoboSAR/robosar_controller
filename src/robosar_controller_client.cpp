@@ -30,7 +30,8 @@ int main (int argc, char **argv)
   pose.header.frame_id = "map";
   pose.pose.position.x = 45.0;
   pose.pose.position.y = 10.0;
-  pose.pose.orientation.z = 0.0;
+  pose.pose.position.z = 0.0;
+  pose.pose.orientation.w = 1.0;
   goal.path.poses.push_back(pose);
 
   pose.header.seq=0;
@@ -38,7 +39,8 @@ int main (int argc, char **argv)
   pose.header.frame_id = "map";
   pose.pose.position.x = 45.5;
   pose.pose.position.y = 10.0;
-  pose.pose.orientation.z = 5.0;
+  pose.pose.position.z = 5.0;
+  pose.pose.orientation.w = 1.0;
   goal.path.poses.push_back(pose);
 
   pose.header.seq=0;
@@ -46,7 +48,8 @@ int main (int argc, char **argv)
   pose.header.frame_id = "map";
   pose.pose.position.x = 46.0;
   pose.pose.position.y = 10.0;
-  pose.pose.orientation.z = 10.0;
+  pose.pose.position.z = 10.0;
+  pose.pose.orientation.w = 1.0;
   goal.path.poses.push_back(pose);
 
   pose.header.seq=0;
@@ -54,7 +57,8 @@ int main (int argc, char **argv)
   pose.header.frame_id = "map";
   pose.pose.position.x = 46.5;
   pose.pose.position.y = 10.0;
-  pose.pose.orientation.z = 15.0;
+  pose.pose.position.z = 15.0;
+  pose.pose.orientation.w = 1.0;
   goal.path.poses.push_back(pose);
 
   pose.header.seq=0;
@@ -62,7 +66,8 @@ int main (int argc, char **argv)
   pose.header.frame_id = "map";
   pose.pose.position.x = 47.0;
   pose.pose.position.y = 10.0;
-  pose.pose.orientation.z = 20.0;
+  pose.pose.position.z = 20.0;
+  pose.pose.orientation.w = 1.0;
   goal.path.poses.push_back(pose);
 
   ac.sendGoal(goal);

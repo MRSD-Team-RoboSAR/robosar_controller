@@ -235,10 +235,12 @@ public:
         if(checkifGoalReached(tf.transform)) {
           v_ = 0.0;
           stop_ = true;
-          path_.pop();
+          while(!path_.empty())
+            path_.pop();
         }
         // Time based check for the intermediate goals
-        else if(compare_float(path_.front()[0],goalQueue.front().pose.position.x) 
+        else if(goalQueue.size()>1 
+            && compare_float(path_.front()[0],goalQueue.front().pose.position.x) 
             && compare_float(path_.front()[1],goalQueue.front().pose.position.y)){
           v_ = 0.0;
           stop_ = true;
@@ -278,12 +280,15 @@ public:
       // Publish velocities!
       pub_vel_.publish(cmd_vel_);
 
-      ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",cmd_vel_.linear.x, cmd_vel_.angular.z,
+      if(path_.empty())
+        ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f",cmd_vel_.linear.x, cmd_vel_.angular.z);
+      else
+        ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",cmd_vel_.linear.x, cmd_vel_.angular.z,
                                                                       path_.front()[0],path_.front()[1],path_.front()[2]);
 
       // Publish the lookahead target transform.
       lookahead_.header.stamp = ros::Time::now();
-      tf_broadcaster_.sendTransform(lookahead_);
+      //tf_broadcaster_.sendTransform(lookahead_);
 
     }
 
@@ -300,7 +305,7 @@ public:
       it++;
       path_.pop();
     }
-    ROS_INFO("[RoboSAR Controller] Popped %d velocities with time elapsed %f",it,time_elapsed);
+    ROS_INFO("[RoboSAR Controller] Popped %d/%ld velocities with time elapsed %f",it,path_.size(),time_elapsed);
 
   }
   void ppProcessLookahead(geometry_msgs::Transform current_pose) {
@@ -478,7 +483,10 @@ public:
 
     double distance_to_goal = distance(current_pose.translation, goalQueue.back().pose.position);
     if(distance_to_goal <= goal_threshold)
+    {
+      ROS_WARN("Goal reached!");
       return true;
+    }
     else 
       return false; 
   }
