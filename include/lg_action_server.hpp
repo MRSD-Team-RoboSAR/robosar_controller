@@ -149,8 +149,8 @@ public:
             goalQueue.push(cartesian_pose);
           }
         }
-        // Add final goal too
-        if(idx_ == new_path.poses.size()-1 &&  !checkIfPosesEqual(cartesian_pose,goalQueue.back())) {
+        // Add final goal too if not already added
+        if(idx_ == new_path.poses.size()-1 && (goalQueue.empty() || !checkIfPosesEqual(cartesian_pose,goalQueue.back()))) {
           goalQueue.push(cartesian_pose);
         }
 
@@ -159,6 +159,7 @@ public:
         {
           cartesian_path_.poses.push_back(cartesian_pose);
         }
+        
       }
        goal_reached_ = false;
     }
@@ -204,14 +205,15 @@ public:
     try
     {
       tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
-      double yaw = tf::getYaw(tf.transform.rotation);
-      ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
     }
      catch (tf2::TransformException &ex)
     {
       ROS_WARN_STREAM(ex.what());
+      // @TODO indraneel should we increment controller_it if we fail to lookup transform?
       return;
     }
+    double yaw = tf::getYaw(tf.transform.rotation);
+    ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
 
     if(rotate_to_global_plan) {
         double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);

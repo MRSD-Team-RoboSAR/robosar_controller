@@ -9,7 +9,7 @@ int main (int argc, char **argv)
 
   // create the action client
   // true causes the client to spin its own thread
-  actionlib::SimpleActionClient<robosar_controller::RobosarControllerAction> ac("controller", true);
+  actionlib::SimpleActionClient<robosar_controller::RobosarControllerAction> ac("agent_0", true);
 
   ROS_INFO("Waiting for action server to start.");
   // wait for the action server to start
@@ -28,18 +28,43 @@ int main (int argc, char **argv)
   pose.header.seq=0;
   pose.header.stamp = ros::Time::now();
   pose.header.frame_id = "map";
-  pose.pose.position.x = 0.5;
-  pose.pose.position.y = -0.18;
-  pose.pose.orientation.z = -0.18145437944873438;
+  pose.pose.position.x = 45.0;
+  pose.pose.position.y = 10.0;
+  pose.pose.orientation.z = 0.0;
   goal.path.poses.push_back(pose);
 
   pose.header.seq=0;
   pose.header.stamp = ros::Time::now();
   pose.header.frame_id = "map";
-  pose.pose.position.x = 0.5;
-  pose.pose.position.y = -0.77;
-  pose.pose.orientation.z = -0.1613906061700738;
+  pose.pose.position.x = 45.5;
+  pose.pose.position.y = 10.0;
+  pose.pose.orientation.z = 5.0;
   goal.path.poses.push_back(pose);
+
+  pose.header.seq=0;
+  pose.header.stamp = ros::Time::now();
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 46.0;
+  pose.pose.position.y = 10.0;
+  pose.pose.orientation.z = 10.0;
+  goal.path.poses.push_back(pose);
+
+  pose.header.seq=0;
+  pose.header.stamp = ros::Time::now();
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 46.5;
+  pose.pose.position.y = 10.0;
+  pose.pose.orientation.z = 15.0;
+  goal.path.poses.push_back(pose);
+
+  pose.header.seq=0;
+  pose.header.stamp = ros::Time::now();
+  pose.header.frame_id = "map";
+  pose.pose.position.x = 47.0;
+  pose.pose.position.y = 10.0;
+  pose.pose.orientation.z = 20.0;
+  goal.path.poses.push_back(pose);
+
   ac.sendGoal(goal);
 
   //wait for the action to return
