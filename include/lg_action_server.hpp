@@ -77,6 +77,7 @@ public:
     time_last(0.0), rotate_to_global_plan(true), stop_(false)
   {
     // Populate messages with static data
+    robot_frame_id_ = action_name_ + "/base_link";
     lookahead_.header.frame_id = robot_frame_id_;
     lookahead_.child_frame_id = lookahead_frame_id_;
     as_.start();
@@ -93,8 +94,7 @@ public:
     controller_it = 0; //Setting controller iterator to 0 every time action is called
     receivePath(goal->path);
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LGControllerAction::computeVelocities, this, _1));
-    pub_vel_ = nh_.advertise<geometry_msgs::Twist>(goal->agent_name+"/cmd_vel", 1);
-
+    pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/"+action_name_+"/cmd_vel", 1);
     while(!goal_reached_)
     {
       if (as_.isPreemptRequested() || !ros::ok())
