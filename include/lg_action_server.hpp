@@ -70,7 +70,7 @@ public:
 
   LGControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&LGControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(1.0), v_max_(0.5), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
+    ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
     time_last(0.0), rotate_to_global_plan(true)
@@ -210,25 +210,14 @@ public:
       ppProcessLookahead(tf.transform);
 
       controller_it++;
-      double time_elapsed = controller_it*controller_period_s;
-
-      // Synchronise controller time with path_time
-      double path_time = path_.front()[2];
-      int it=0;
-      while(!path_.empty() && time_elapsed>path_time) {
-        it++;
-        // Update time last
-        time_last = path_.front()[2];
-        path_.pop();
-      }
-      ROS_INFO("Popped %d velocities",it);
+      cycleWaypointsUsingTime();
 
       if(!path_.empty()){
 
         // TODO @Charvi linear velocity
         v_ = 0.0;
         cmd_vel_.linear.x = v_;
-        
+
          // Compute the angular velocity.
         // Lateral error is the y-value of the lookahead point (in base_link frame)
         double yt = lookahead_.transform.translation.y;
@@ -252,6 +241,22 @@ public:
    
   }
 
+ // Synchronise controller time with path_time
+  void cycleWaypointsUsingTime() {
+
+    double time_elapsed = controller_it*controller_period_s;
+    double path_time = path_.front()[2];
+    int it=0;
+    
+    while(!path_.empty() && time_elapsed>path_time) {
+      it++;
+      // Update time last
+      time_last = path_.front()[2];
+      path_.pop();
+    }
+    ROS_INFO("Popped %d velocities",it);
+
+  }
   void ppProcessLookahead(geometry_msgs::Transform current_pose) {
 
     for (; pp_idx_ < cartesian_path_.poses.size(); pp_idx_++)
