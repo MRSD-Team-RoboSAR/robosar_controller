@@ -239,6 +239,11 @@ public:
       }
       else {
         //Path list is empty -> goal should have been reached
+
+         // The lookahead target is at our current pose.
+        lookahead_.transform = geometry_msgs::Transform();
+        lookahead_.transform.rotation.w = 1.0;
+
         //Stop moving
         cmd_vel_.linear.x = 0.0;
         cmd_vel_.angular.z = 0.0;
@@ -246,6 +251,10 @@ public:
         goal_reached_ = true;
         ROS_INFO("Stopping!!");
       }
+
+      // Publish the lookahead target transform.
+      lookahead_.header.stamp = ros::Time::now();
+      tf_broadcaster_.sendTransform(lookahead_);
 
     }
 
@@ -258,7 +267,7 @@ public:
     double time_elapsed = controller_it*controller_period_s;
     double path_time = path_.front()[2];
     int it=0;
-    
+
     while(!path_.empty() && time_elapsed>path_time) {
       it++;
       // Update time last
