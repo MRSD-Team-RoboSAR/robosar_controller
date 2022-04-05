@@ -53,7 +53,7 @@ private:
   // Steering angle is denoted by delta
   double delta_, delta_vel_, acc_, jerk_, delta_max_;
   std::queue<std::vector<double>> path_;
-  std::queue<std::vector<double>> goalQueue;
+  std::queue<geometry_msgs::PoseStamped> goalQueue;
   unsigned pp_idx_;
   bool goal_reached_;
   geometry_msgs::Twist cmd_vel_;
@@ -138,24 +138,21 @@ public:
         cartesian_pose.pose.position.x = new_path.poses[idx_].pose.position.x;
         cartesian_pose.pose.position.y = new_path.poses[idx_].pose.position.y;
         
+        // Add points to the goal queue
+        if(idx_!=0 && checkIfPosesEqual(cartesian_pose,cartesian_path_.poses.back()) && !checkIfPosesEqual(cartesian_pose,goalQueue.back()))
+        {
+          goalQueue.push(cartesian_pose);
+        }
+
+        // Add final goal too
+        if(idx_ == new_path.poses.size()-1 &&  !checkIfPosesEqual(cartesian_pose,goalQueue.back())) {
+          goalQueue.push(cartesian_pose);
+        }
+
+        // Create cartesian path for pure pursuit
         if(idx_ == 0 || !checkIfPosesEqual(cartesian_pose,cartesian_path_.poses[cartesian_path_.poses.size()-1]) )
         {
           cartesian_path_.poses.push_back(cartesian_pose);
-        }
-      }
-      double curr_x = new_path.poses[0].pose.position.x;
-      double curr_y = new_path.poses[0].pose.position.y;
-      for (int idx_ = 1; idx_ < new_path.poses.size(); idx_++){
-        if(compare_float(new_path.poses[idx_].pose.position.x,curr_x) && compare_float(new_path.poses[idx_].pose.position.y,curr_y)
-          && !compare_float(new_path.poses[idx_].pose.position.x,goalQueue.back()[0]) && !compare_float(new_path.poses[idx_].pose.position.y,goalQueue.back()[1])){
-          std::vector<double> coordinates;
-          coordinates.push_back(new_path.poses[idx_].pose.position.x);
-          coordinates.push_back(new_path.poses[idx_].pose.position.y);
-          goalQueue.push(coordinates);
-        }
-        else{
-          curr_x = new_path.poses[idx_].pose.position.x;
-          curr_y = new_path.poses[idx_].pose.position.y;
         }
       }
        goal_reached_ = false;
