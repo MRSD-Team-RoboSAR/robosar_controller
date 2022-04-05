@@ -74,7 +74,7 @@ public:
     as_(nh_, name, boost::bind(&LGControllerAction::executeCB, this, _1), false),action_name_(name),
     ld_(1.0), v_max_(0.1), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
-    lookahead_frame_id_("lookahead"), controller_period_s(0.1), controller_it(0), v_linear_last(0.0),
+    lookahead_frame_id_("lookahead"), controller_period_s(0.2), controller_it(0), v_linear_last(0.0),
     rotate_to_global_plan(true), stop_(false), goal_threshold(0.1)
   {
     // Populate messages with static data
@@ -201,9 +201,17 @@ public:
     // Get current pose
 
     geometry_msgs::TransformStamped tf;
-    tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
-    double yaw = tf::getYaw(tf.transform.rotation);
-    ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
+    try
+    {
+      tf = tf_buffer_.lookupTransform(map_frame_id_, robot_frame_id_, ros::Time(0));
+      double yaw = tf::getYaw(tf.transform.rotation);
+      ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
+    }
+     catch (tf2::TransformException &ex)
+    {
+      ROS_WARN_STREAM(ex.what());
+      return;
+    }
 
     if(rotate_to_global_plan) {
         double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);
