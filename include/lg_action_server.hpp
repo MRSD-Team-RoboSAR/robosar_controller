@@ -74,7 +74,7 @@ public:
 
   LGControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&LGControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(0.4), v_max_(0.3), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
+    ld_(0.4), v_max_(0.2), v_(v_max_), w_max_(0.5), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.2), controller_it(0), v_linear_last(0.0),
     rotate_to_global_plan(true), stop_(false), goal_threshold(0.1)
