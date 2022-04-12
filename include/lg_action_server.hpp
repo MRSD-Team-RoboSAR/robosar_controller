@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <queue>
 #include <actionlib/server/simple_action_server.h>
-#include <robosar_controller/PurePursuitAction.h>
 #include <robosar_controller/RobosarControllerAction.h>
 
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
@@ -73,7 +72,7 @@ public:
 
   LGControllerAction(std::string name) :
     as_(nh_, name, boost::bind(&LGControllerAction::executeCB, this, _1), false),action_name_(name),
-    ld_(0.4), v_max_(0.2), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
+    ld_(0.3), v_max_(0.2), v_(v_max_), w_max_(0.5), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.2), controller_it(0),
     rotate_to_global_plan(true), stop_(false), goal_threshold(0.1)
@@ -125,7 +124,7 @@ public:
   }
   void receivePath(nav_msgs::Path new_path)
   {
-    ROS_INFO("[RoboSAR Controller] Receiving path!");
+    ROS_INFO("[RoboSAR Controller-%s] Receiving path!",&action_name_[0]);
 
     if(new_path.poses.size()>0)
     {
@@ -134,6 +133,11 @@ public:
       rotate_to_global_plan = true;
       controller_it = 0;
       stop_ = false;
+      std::queue<std::vector<double>> empty_path_;
+      std::swap( path_, empty_path_ );
+      std::queue<geometry_msgs::PoseStamped> empty_goalQueue;
+      std::swap( goalQueue, empty_goalQueue );
+      pp_idx_ = 0;
       
       for (int idx_ = 0; idx_ < new_path.poses.size(); idx_++){
         std::vector<double> coordinates;
@@ -189,11 +193,9 @@ public:
     // path is feasible.
     // Callbacks are non-interruptible, so this will
     // not interfere with velocity computation callback.
-    ROS_INFO("[RoboSAR Controller] Trajectory size %ld Cartesian path size %ld goal queue %ld",
-                                          path_.size(), cartesian_path_.poses.size(), goalQueue.size());
+    ROS_INFO("[RoboSAR Controller-%s] Trajectory size %ld Cartesian path size %ld goal queue %ld",
+                                          &action_name_[0],path_.size(), cartesian_path_.poses.size(), goalQueue.size());
 
-    // Reset variables
-    pp_idx_ = 0;
   }
 
   bool compare_float(float x, float y, float epsilon = 0.01f){
@@ -229,11 +231,11 @@ public:
       return;
     }
     double yaw = tf::getYaw(tf.transform.rotation);
-    ROS_INFO("Transform x: %f y:%f yaw:%f",tf.transform.translation.x,tf.transform.translation.y,yaw);
+    ROS_INFO("[RoboSAR Controller-%s]  Transform x: %f y:%f yaw:%f",&action_name_[0],tf.transform.translation.x,tf.transform.translation.y,yaw);
 
     if(rotate_to_global_plan) {
         double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);
-        ROS_INFO("Shortest angle to goal %f",angle_to_global_plan);
+        ROS_INFO("[RoboSAR Controller-%s] Shortest angle to goal %f",&action_name_[0],angle_to_global_plan);
         rotate_to_global_plan = rotateToOrientation(angle_to_global_plan,0.1);
     }
     else {
@@ -275,7 +277,9 @@ public:
         // Lateral error is the y-value of the lookahead point (in base_link frame)
         double yt = lookahead_.transform.translation.y;
         double ld_2 = ld_ * ld_;
-        cmd_vel_.angular.z = std::min( 2*v_ / ld_2 * yt, w_max_ );
+        double ang_control = 2*v_ / ld_2 * yt;
+        cmd_vel_.angular.z = std::min( fabs(ang_control), w_max_ );
+        cmd_vel_.angular.z = copysign(cmd_vel_.angular.z, ang_control);
 
 
       }
@@ -297,9 +301,9 @@ public:
       pub_vel_.publish(cmd_vel_);
 
       if(path_.empty())
-        ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f",cmd_vel_.linear.x, cmd_vel_.angular.z);
+        ROS_INFO("[RoboSAR Controller-%s]: CMD_LIN %f CMD_ANG %f",&action_name_[0],cmd_vel_.linear.x, cmd_vel_.angular.z);
       else
-        ROS_INFO("[RoboSAR Controller]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",cmd_vel_.linear.x, cmd_vel_.angular.z,
+        ROS_INFO("[RoboSAR Controller-%s]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",&action_name_[0],cmd_vel_.linear.x, cmd_vel_.angular.z,
                                                                       path_.front()[0],path_.front()[1],path_.front()[2]);
 
       // Publish the lookahead target transform.
@@ -343,7 +347,7 @@ public:
         
         // TODO: See how the above conversion can be done more elegantly
         // using tf2_kdl and tf2_geometry_msgs
-
+        ROS_INFO("[RoboSAR Controller-%s]: Lookahead X: %f Y: %f",&action_name_[0],lookahead_.transform.translation.x , lookahead_.transform.translation.y);
         break;
       }
     }
@@ -377,6 +381,7 @@ public:
                                  lookahead_.transform.rotation.y,
                                  lookahead_.transform.rotation.z,
                                  lookahead_.transform.rotation.w);
+        ROS_INFO("[RoboSAR Controller-%s]:***** Lookahead X: %f Y: %f",&action_name_[0],lookahead_.transform.translation.x , lookahead_.transform.translation.y);
     }
 
   }
@@ -408,7 +413,7 @@ public:
       }
       else
       {
-        ROS_INFO("Rotate to orientation complete!");
+        ROS_INFO("[RoboSAR Controller-%s] Rotate to orientation complete!",&action_name_[0]);
         cmd_vel_.linear.x = 0.0;
         cmd_vel_.angular.z = 0.0;
         pub_vel_.publish(cmd_vel_);
