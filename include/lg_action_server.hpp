@@ -41,6 +41,7 @@ private:
   bool rotate_to_global_plan;
   unsigned int controller_it;
   double controller_period_s;
+  double trajectory_period_s;
   // Vehicle parameters
   double L_;
   // Algorithm variables
@@ -138,6 +139,10 @@ public:
       std::queue<geometry_msgs::PoseStamped> empty_goalQueue;
       std::swap( goalQueue, empty_goalQueue );
       pp_idx_ = 0;
+
+      // Get trajectory period
+      trajectory_period_s = new_path.poses[1].pose.position.z - new_path.poses[0].pose.position.z;
+      ROS_INFO("[RoboSAR Controller-%s] Traj period is %f",&action_name_[0],trajectory_period_s);
       
       for (int idx_ = 0; idx_ < new_path.poses.size(); idx_++){
         std::vector<double> coordinates;
@@ -272,6 +277,8 @@ public:
           v_ = copysign(v_max_, v_);
         } 
         cmd_vel_.linear.x = v_;
+        if(!path_.empty())
+          closedLoopVelocityController(tf.transform, path_.front());
 
          // Compute the angular velocity.
         // Lateral error is the y-value of the lookahead point (in base_link frame)
@@ -314,6 +321,28 @@ public:
 
    
   }
+
+  void closedLoopVelocityController(geometry_msgs::Transform current_pose,std::vector<double> waypointToTrack) {
+      
+      // only change velocity if robot is moving
+      if(cmd_vel_.linear.x>0.0) {
+        double distEstimated = cmd_vel_.linear.x*trajectory_period_s;
+        double distToDo = hypot(waypointToTrack[0]-current_pose.translation.x, waypointToTrack[1]-current_pose.translation.y);
+        double distError = distToDo-distEstimated;
+
+        double maxVel = 0.1;
+        double weight_ = 1.0;
+
+        ROS_INFO("Error in position %f\n",distError);
+        // Only change velocity for lagging
+        if(distError>0) {
+
+          distError = fabs(distError);
+          cmd_vel_.linear.x = cmd_vel_.linear.x + maxVel*exp(-1.0 * weight_ * distError);
+        }
+      }
+  }
+
 
  // Synchronise controller time with path_time
   void cycleWaypointsUsingTime() {
