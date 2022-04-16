@@ -349,7 +349,7 @@ public:
         if(controller_active) {
 
           distError = fabs(distError);
-          cmd_vel_.linear.x = cmd_vel_.linear.x + maxVel*exp(-1.0 * weight_ * distError);
+          cmd_vel_.linear.x = cmd_vel_.linear.x + maxVel - maxVel*exp(-1.0 * weight_ * distError);
         }
         
       }
