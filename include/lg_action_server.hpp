@@ -41,7 +41,6 @@ private:
   bool rotate_to_global_plan;
   unsigned int controller_it;
   double controller_period_s;
-  double trajectory_period_s;
   // Vehicle parameters
   double L_;
   // Algorithm variables
@@ -59,6 +58,7 @@ private:
   bool stop_;
   geometry_msgs::Twist cmd_vel_;
   nav_msgs::Path cartesian_path_;
+  double time_elapsed;
 
 protected:
 
@@ -139,10 +139,6 @@ public:
       std::queue<geometry_msgs::PoseStamped> empty_goalQueue;
       std::swap( goalQueue, empty_goalQueue );
       pp_idx_ = 0;
-
-      // Get trajectory period
-      trajectory_period_s = new_path.poses[1].pose.position.z - new_path.poses[0].pose.position.z;
-      ROS_INFO("[RoboSAR Controller-%s] Traj period is %f",&action_name_[0],trajectory_period_s);
       
       for (int idx_ = 0; idx_ < new_path.poses.size(); idx_++){
         std::vector<double> coordinates;
@@ -245,7 +241,7 @@ public:
     }
     else {
 
-      ROS_INFO("Computing Velocity");
+      ROS_DEBUG("Computing Velocity");
       ppProcessLookahead(tf.transform);
 
       cycleWaypointsUsingTime();
@@ -258,6 +254,9 @@ public:
         if(checkifGoalReached(tf.transform)) {
           v_ = 0.0;
           stop_ = true;
+          ROS_INFO("[RoboSAR Controller-%s] Elapsed time %f Expected time %f Error %f",
+                          &action_name_[0],time_elapsed,path_.back()[2],time_elapsed-path_.back()[2]);
+
           while(!path_.empty())
             path_.pop();
         }
@@ -268,7 +267,7 @@ public:
           v_ = 0.0;
           stop_ = true;
         }
-        else{
+        else {
           if(stop_ == true){
             stop_ = false;
             goalQueue.pop();
@@ -277,6 +276,8 @@ public:
           v_ = copysign(v_max_, v_);
         } 
         cmd_vel_.linear.x = v_;
+        
+        // Modify linear velocity based on position error
         if(!path_.empty())
           closedLoopVelocityController(tf.transform, path_.front());
 
@@ -324,22 +325,33 @@ public:
 
   void closedLoopVelocityController(geometry_msgs::Transform current_pose,std::vector<double> waypointToTrack) {
       
+      static bool controller_active = false;
+
       // only change velocity if robot is moving
       if(cmd_vel_.linear.x>0.0) {
-        double distEstimated = cmd_vel_.linear.x*trajectory_period_s;
+
+        double timeRemaining = waypointToTrack[2]-time_elapsed;
+        double distEstimated = cmd_vel_.linear.x*timeRemaining;
         double distToDo = hypot(waypointToTrack[0]-current_pose.translation.x, waypointToTrack[1]-current_pose.translation.y);
         double distError = distToDo-distEstimated;
 
         double maxVel = 0.1;
-        double weight_ = 1.0;
+        double weight_ = 5.0;
 
-        ROS_INFO("Error in position %f\n",distError);
+        ROS_INFO("[RoboSAR Controller-%s] Error in position %f\n",&action_name_[0],distError);
         // Only change velocity for lagging
-        if(distError>0) {
+        
+        if(distError>0.20)
+          controller_active = true;
+        else if(distError<0.05)
+          controller_active = false;
+
+        if(controller_active) {
 
           distError = fabs(distError);
           cmd_vel_.linear.x = cmd_vel_.linear.x + maxVel*exp(-1.0 * weight_ * distError);
         }
+        
       }
   }
 
@@ -347,7 +359,7 @@ public:
  // Synchronise controller time with path_time
   void cycleWaypointsUsingTime() {
 
-    double time_elapsed = controller_it*controller_period_s;
+    time_elapsed = controller_it*controller_period_s;
     int it=0;
 
     while(!path_.empty() && path_.size()!=1 && time_elapsed>path_.front()[2]) {
