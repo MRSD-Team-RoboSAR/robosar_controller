@@ -236,7 +236,7 @@ public:
 
     if(rotate_to_global_plan) {
         double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);
-        ROS_INFO("[RoboSAR Controller-%s] Shortest angle to goal %f %f %f",&action_name_[0],angle_to_global_plan,yaw, path_.front()[3]);
+        ROS_INFO("[RoboSAR Controller-%s] Shortest angle to goal %f",&action_name_[0],angle_to_global_plan);
         rotate_to_global_plan = rotateToOrientation(angle_to_global_plan,0.1);
     }
     else {
