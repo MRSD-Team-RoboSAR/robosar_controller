@@ -58,6 +58,7 @@ private:
   bool stop_;
   geometry_msgs::Twist cmd_vel_;
   nav_msgs::Path cartesian_path_;
+  bool rotation_active;
 
 protected:
 
@@ -75,7 +76,7 @@ public:
     ld_(0.4), v_max_(0.2), v_(v_max_), w_max_(1.0), pos_tol_(0.1), pp_idx_(0),goal_reached_(true), 
     nh_private_("~"), tf_listener_(tf_buffer_), map_frame_id_("map"), robot_frame_id_("base_link"),
     lookahead_frame_id_("lookahead"), controller_period_s(0.2), controller_it(0),
-    rotate_to_global_plan(true), stop_(false), goal_threshold(0.2)
+    rotate_to_global_plan(true), stop_(false), goal_threshold(0.2), rotation_active(false)
   {
     // Populate messages with static data
     robot_frame_id_ = action_name_ + "/base_link";
@@ -235,7 +236,7 @@ public:
 
     if(rotate_to_global_plan) {
         double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);
-        ROS_INFO("[RoboSAR Controller-%s] Shortest angle to goal %f",&action_name_[0],angle_to_global_plan);
+        ROS_INFO("[RoboSAR Controller-%s] Shortest angle to goal %f %f %f",&action_name_[0],angle_to_global_plan,yaw, path_.front()[3]);
         rotate_to_global_plan = rotateToOrientation(angle_to_global_plan,0.1);
     }
     else {
@@ -400,13 +401,17 @@ public:
       {
           // Nothing fancy just rotate with a fixed velocity
           cmd_vel_.linear.x = 0.0;
-          if(angle < 0)
-          {
-            cmd_vel_.angular.z = -w_max_/2;
-          }
-          else
-          {
-            cmd_vel_.angular.z = w_max_/2;
+          // Dont change angular velocity once it is set
+          if(!rotation_active) {
+            if(angle < 0)
+            {
+              cmd_vel_.angular.z = -w_max_/2;
+            }
+            else
+            {
+              cmd_vel_.angular.z = w_max_/2;
+            }
+            rotation_active = true;
           }
           pub_vel_.publish(cmd_vel_);
           return true;
@@ -416,6 +421,7 @@ public:
         ROS_INFO("[RoboSAR Controller-%s] Rotate to orientation complete!",&action_name_[0]);
         cmd_vel_.linear.x = 0.0;
         cmd_vel_.angular.z = 0.0;
+        rotation_active = false;
         pub_vel_.publish(cmd_vel_);
         return false;
       }
