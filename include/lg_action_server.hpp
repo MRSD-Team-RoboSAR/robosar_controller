@@ -58,6 +58,7 @@ private:
   bool stop_;
   geometry_msgs::Twist cmd_vel_;
   nav_msgs::Path cartesian_path_;
+  double time_elapsed;
 
 protected:
 
@@ -232,93 +233,133 @@ public:
     }
     double yaw = tf::getYaw(tf.transform.rotation);
     ROS_INFO("[RoboSAR Controller-%s]  Transform x: %f y:%f yaw:%f",&action_name_[0],tf.transform.translation.x,tf.transform.translation.y,yaw);
+  
 
-    if(rotate_to_global_plan) {
+    ROS_DEBUG("Computing Velocity");
+
+    cycleWaypointsUsingTime();
+    controller_it++;
+
+    if(!path_.empty()){
+
+      // TODO @Charvi linear velocity
+      // Distance based check for the final goal
+      if(checkifGoalReached(tf.transform)) {
+        v_ = 0.0;
+        stop_ = true;
+        ROS_INFO("[RoboSAR Controller-%s] Elapsed time %f Expected time %f Error %f",
+                        &action_name_[0],time_elapsed,path_.back()[2],time_elapsed-path_.back()[2]);
+
+        while(!path_.empty())
+          path_.pop();
+      }
+      // Time based check for the intermediate goals
+      else if(goalQueue.size()>1 
+          && compare_float(path_.front()[0],goalQueue.front().pose.position.x) 
+          && compare_float(path_.front()[1],goalQueue.front().pose.position.y)){
+        v_ = 0.0;
+        stop_ = true;
+      }
+      else {
+        if(stop_ == true){
+          stop_ = false;
+          goalQueue.pop();
+        }
+        // continue moving with max velocity
+        v_ = copysign(v_max_, v_);
+      } 
+      cmd_vel_.linear.x = v_;
+      
+      if(rotate_to_global_plan) {
         double angle_to_global_plan = calculateGlobalPlanAngle(tf.transform.translation.x,tf.transform.translation.y,yaw);
         ROS_INFO("[RoboSAR Controller-%s] Shortest angle to goal %f",&action_name_[0],angle_to_global_plan);
         rotate_to_global_plan = rotateToOrientation(angle_to_global_plan,0.1);
-    }
-    else {
+      }
+      else {
 
-      ROS_INFO("Computing Velocity");
-      ppProcessLookahead(tf.transform);
+        ppProcessLookahead(tf.transform);
 
-      cycleWaypointsUsingTime();
-      controller_it++;
+        // Modify linear velocity based on position error
+        if(!path_.empty())
+          closedLoopVelocityController(tf.transform, path_.front());
 
-      if(!path_.empty()){
-
-        // TODO @Charvi linear velocity
-        // Distance based check for the final goal
-        if(checkifGoalReached(tf.transform)) {
-          v_ = 0.0;
-          stop_ = true;
-          while(!path_.empty())
-            path_.pop();
-        }
-        // Time based check for the intermediate goals
-        else if(goalQueue.size()>1 
-            && compare_float(path_.front()[0],goalQueue.front().pose.position.x) 
-            && compare_float(path_.front()[1],goalQueue.front().pose.position.y)){
-          v_ = 0.0;
-          stop_ = true;
-        }
-        else{
-          if(stop_ == true){
-            stop_ = false;
-            goalQueue.pop();
-          }
-          // continue moving with max velocity
-          v_ = copysign(v_max_, v_);
-        } 
-        cmd_vel_.linear.x = v_;
-
-         // Compute the angular velocity.
+        // Compute the angular velocity.
         // Lateral error is the y-value of the lookahead point (in base_link frame)
         double yt = lookahead_.transform.translation.y;
         double ld_2 = ld_ * ld_;
         double ang_control = 2*v_ / ld_2 * yt;
         cmd_vel_.angular.z = std::min( fabs(ang_control), w_max_ );
         cmd_vel_.angular.z = copysign(cmd_vel_.angular.z, ang_control);
-
-
+     
+          if(path_.empty())
+            ROS_INFO("[RoboSAR Controller-%s]: CMD_LIN %f CMD_ANG %f",&action_name_[0],cmd_vel_.linear.x, cmd_vel_.angular.z);
+          else
+            ROS_INFO("[RoboSAR Controller-%s]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",&action_name_[0],cmd_vel_.linear.x, cmd_vel_.angular.z,
+                                                                          path_.front()[0],path_.front()[1],path_.front()[2]);
       }
-      else {
-        //Path list is empty -> goal should have been reached
-
-         // The lookahead target is at our current pose.
-        lookahead_.transform = geometry_msgs::Transform();
-        lookahead_.transform.rotation.w = 1.0;
-
-        //Stop moving
-        cmd_vel_.linear.x = 0.0;
-        cmd_vel_.angular.z = 0.0;
-        goal_reached_ = true;
-        ROS_INFO("Stopping!!");
-      }
-
-      // Publish velocities!
-      pub_vel_.publish(cmd_vel_);
-
-      if(path_.empty())
-        ROS_INFO("[RoboSAR Controller-%s]: CMD_LIN %f CMD_ANG %f",&action_name_[0],cmd_vel_.linear.x, cmd_vel_.angular.z);
-      else
-        ROS_INFO("[RoboSAR Controller-%s]: CMD_LIN %f CMD_ANG %f Tracking %f %f at %f",&action_name_[0],cmd_vel_.linear.x, cmd_vel_.angular.z,
-                                                                      path_.front()[0],path_.front()[1],path_.front()[2]);
-
-      // Publish the lookahead target transform.
-      lookahead_.header.stamp = ros::Time::now();
-      //tf_broadcaster_.sendTransform(lookahead_);
 
     }
+    else {
+      //Path list is empty -> goal should have been reached
+
+        // The lookahead target is at our current pose.
+      lookahead_.transform = geometry_msgs::Transform();
+      lookahead_.transform.rotation.w = 1.0;
+
+      //Stop moving
+      cmd_vel_.linear.x = 0.0;
+      cmd_vel_.angular.z = 0.0;
+      goal_reached_ = true;
+      ROS_INFO("Stopping!!");
+    }
+
+    // Publish velocities!
+    pub_vel_.publish(cmd_vel_);
+
+    // Publish the lookahead target transform.
+    lookahead_.header.stamp = ros::Time::now();
+    //tf_broadcaster_.sendTransform(lookahead_);
 
    
   }
 
+  void closedLoopVelocityController(geometry_msgs::Transform current_pose,std::vector<double> waypointToTrack) {
+      
+      static bool controller_active = false;
+
+      // only change velocity if robot is moving
+      if(cmd_vel_.linear.x>0.0) {
+
+        double timeRemaining = waypointToTrack[2]-time_elapsed;
+        double distEstimated = cmd_vel_.linear.x*timeRemaining;
+        double distToDo = hypot(waypointToTrack[0]-current_pose.translation.x, waypointToTrack[1]-current_pose.translation.y);
+        double distError = distToDo-distEstimated;
+
+        double maxVel = 0.1;
+        double weight_ = 1.0;
+
+        ROS_INFO("[RoboSAR Controller-%s] Error in position %f\n",&action_name_[0],distError);
+        // Only change velocity for lagging
+        
+        if(distError>0.20)
+          controller_active = true;
+        else if(distError<0.05)
+          controller_active = false;
+
+        if(controller_active) {
+
+          distError = fabs(distError);
+          cmd_vel_.linear.x = cmd_vel_.linear.x + maxVel - maxVel*exp(-1.0 * weight_ * distError);
+        }
+        
+      }
+  }
+
+
  // Synchronise controller time with path_time
   void cycleWaypointsUsingTime() {
 
-    double time_elapsed = controller_it*controller_period_s;
+    time_elapsed = controller_it*controller_period_s;
     int it=0;
 
     while(!path_.empty() && path_.size()!=1 && time_elapsed>path_.front()[2]) {
@@ -408,7 +449,6 @@ public:
           {
             cmd_vel_.angular.z = w_max_/2;
           }
-          pub_vel_.publish(cmd_vel_);
           return true;
       }
       else
@@ -416,7 +456,6 @@ public:
         ROS_INFO("[RoboSAR Controller-%s] Rotate to orientation complete!",&action_name_[0]);
         cmd_vel_.linear.x = 0.0;
         cmd_vel_.angular.z = 0.0;
-        pub_vel_.publish(cmd_vel_);
         return false;
       }
 
