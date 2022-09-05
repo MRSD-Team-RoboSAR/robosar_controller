@@ -20,7 +20,6 @@
 #include <geometry_msgs/Vector3Stamped.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
-#include <ackermann_msgs/AckermannDriveStamped.h>
 
 #include <kdl/frames.hpp>
 #include <robosar_controller/PurePursuitConfig.h>
