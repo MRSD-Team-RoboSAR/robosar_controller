@@ -128,9 +128,9 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/robosar_pure_pursuit.cpp
-# )
+add_library(${PROJECT_NAME}
+   src/traffic_controller.cpp
+ )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -142,6 +142,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/robosar_controller_node.cpp)
 add_executable(robosar_controller_client src/robosar_controller_client.cpp)
+add_executable(robosar_traffic_controller_node src/traffic_controller_node.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -158,6 +159,11 @@ target_link_libraries(${PROJECT_NAME}_node
 )
 target_link_libraries(robosar_controller_client
   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(robosar_traffic_controller_node
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
 )
 #############
 ## Install ##
