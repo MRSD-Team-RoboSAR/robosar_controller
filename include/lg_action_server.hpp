@@ -120,6 +120,7 @@ public:
 
   ~LGControllerAction(void)
   {
+    
   }
   void receivePath(nav_msgs::Path new_path)
   {

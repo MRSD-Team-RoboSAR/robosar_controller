@@ -4,7 +4,8 @@
 #include "robosar_messages/agent_status.h"
 
 
-LazyTrafficController::LazyTrafficController(): controller_active_(true) {
+LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
+                                                controller_period_s(0.1)  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
     // Get latest fleet info from agent bringup
@@ -17,6 +18,9 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true) {
 
     // Initialise agent map
     initialiseAgentMap(active_agents);
+
+    // Start controller timer
+    controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LazyTrafficController::computeVelocities, this, _1));
 }
 
 void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
@@ -32,20 +36,35 @@ LazyTrafficController::~LazyTrafficController() {
 
 void LazyTrafficController::RunController() {
 
-     ROS_INFO("[RoboSAR Controller] Opening the floodgates! ");
+    ROS_INFO("[RoboSAR Controller] Opening the floodgates! ");
 
-    while(controller_active_) {
+    ros::Rate r(1);
+    while(ros::ok() && controller_active_) {
+        ros::spinOnce();
+        // Check if fleet status is outdated
+        if(fleet_status_outdated_) {
+            // TODO: Update agent map
+            fleet_status_outdated_ = false;
+        }
         
-        
+        r.sleep();
     }
 
 }
+
+void LazyTrafficController::computeVelocities(const ros::TimerEvent&)
+{
+    
+}
+
 
 void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agents) {
     
     for (auto agent : active_agents) {
         agent_map_[agent] = Agent_s();
         agent_map_[agent].name = agent;
+        agent_map_[agent].pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + agent + "/cmd_vel", 1);
+        agent_map_[agent].robot_frame_id_ = agent + "/base_link";
     }
 }
 

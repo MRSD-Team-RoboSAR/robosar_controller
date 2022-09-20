@@ -10,6 +10,7 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
+#include <geometry_msgs/Twist.h>
 
 class LazyTrafficController {
 
@@ -25,9 +26,12 @@ private:
     void statusCallback(const std_msgs::Bool &status_msg);
     std::set<std::string> getFleetStatusInfo(void);
     void initialiseAgentMap(std::set<std::string> active_agents);
+    void computeVelocities(const ros::TimerEvent&);
 
     typedef struct Agent {
         std::string name;
+        ros::Publisher pub_vel_;
+        std::string robot_frame_id_;
     } Agent_s;
 
     // std::set<Agent_s> agent_set_;
@@ -41,6 +45,8 @@ private:
     bool fleet_status_outdated_;
     ros::ServiceClient status_client; 
     ros::Timer controller_timer;
+    std::string map_frame_id_;
+    double controller_period_s;
 
 };
 #endif // LAZY_TRAFFIC_CONTROLLER_H
