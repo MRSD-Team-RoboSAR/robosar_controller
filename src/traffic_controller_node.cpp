@@ -1,7 +1,7 @@
 // Created by Indraneel on 19/09/22
 
 #include <ros/ros.h>
-#include "traffic_controller.hpp"
+#include "lazy_traffic_controller.hpp"
 
 int main(int argc, char **argv)
 {
@@ -9,7 +9,7 @@ int main(int argc, char **argv)
 
   //move_base::MoveBase move_base( buffer );
   
-  TrafficController traffic_controller_session;
+  LazyTrafficController traffic_controller_session;
 
   //ros::MultiThreadedSpinner s;
   ros::spin();

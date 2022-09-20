@@ -1,6 +1,6 @@
 // Created by Indraneel and Naren on 19/09/22
-#ifndef TRAFFIC_CONTROLLER_H
-#define TRAFFIC_CONTROLLER_H
+#ifndef LAZY_TRAFFIC_CONTROLLER_H
+#define LAZY_TRAFFIC_CONTROLLER_H
 
 #include <string>
 #include <cmath>
@@ -10,12 +10,12 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 
-class TrafficController {
+class LazyTrafficController {
 
 public:
 
-    TrafficController();
-    ~TrafficController(void);
+    LazyTrafficController();
+    ~LazyTrafficController(void);
 
 
 private:
@@ -26,4 +26,4 @@ private:
     bool controller_active_;
 
 };
-#endif // TRAFFIC_CONTROLLER_H
+#endif // LAZY_TRAFFIC_CONTROLLER_H

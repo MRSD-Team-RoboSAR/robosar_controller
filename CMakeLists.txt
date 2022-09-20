@@ -129,7 +129,7 @@ include_directories(
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
-   src/traffic_controller.cpp
+   src/lazy_traffic_controller.cpp
  )
 
 ## Add cmake target dependencies of the library
