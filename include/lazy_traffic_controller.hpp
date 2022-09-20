@@ -21,13 +21,18 @@ public:
 
 private:
 
-    // typedef Agent {
-    //     string name;
-    // } Agent_s;
-
-    // std::set<Agent_s> agent_set_;
     void RunController(void);
     void statusCallback(const std_msgs::Bool &status_msg);
+    std::set<std::string> getFleetStatusInfo(void);
+    void initialiseAgentMap(std::set<std::string> active_agents);
+
+    typedef struct Agent {
+        std::string name;
+    } Agent_s;
+
+    // std::set<Agent_s> agent_set_;
+    std::map<std::string, Agent_s> agent_map_;
+    std::set<std::string> active_agents;
 
     std::thread traffic_controller_thread_;
     bool controller_active_;
@@ -35,6 +40,7 @@ private:
     ros::NodeHandle nh_;
     bool fleet_status_outdated_;
     ros::ServiceClient status_client; 
+    ros::Timer controller_timer;
 
 };
 #endif // LAZY_TRAFFIC_CONTROLLER_H
