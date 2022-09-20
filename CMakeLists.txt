@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   tf2
   tf2_ros
+  robosar_messages
 )
 
 ## System dependencies are found with CMake's conventions
