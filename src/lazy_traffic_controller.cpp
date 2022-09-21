@@ -26,6 +26,12 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LazyTrafficController::computeVelocities, this, _1));
 }
 
+LazyTrafficController::~LazyTrafficController() {
+
+    controller_active_ = false;
+    traffic_controller_thread_.join();
+}
+
 void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
     fleet_status_outdated_ = true;
 }
@@ -33,14 +39,17 @@ void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
 bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
                                                       robosar_messages::robosar_controller::Response &res) {
     
+    std::lock_guard<std::mutex> lock(map_mutex);
     if(req.stop_controller) {
         ROS_INFO(" [LT_CONTROLLER] Emergency stop requested");
         // TODO
         // Stop all agents
+        for(auto &agent : agent_map_) {
+            agent.second.stop_agent();
+        }
     }
     else {
         ROS_INFO(" [LT_CONTROLLER] New %ld paths received!", req.paths.size());
-        std::lock_guard<std::mutex> lock(map_mutex);
         for(int i = 0; i < req.paths.size(); i++) {
             
             // Ensure agent is already in the map
@@ -69,12 +78,6 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
 }
 
 
-LazyTrafficController::~LazyTrafficController() {
-
-    controller_active_ = false;
-    traffic_controller_thread_.join();
-}
-
 void LazyTrafficController::RunController() {
 
     ROS_INFO("[LT_CONTROLLER] Opening the floodgates! ");
@@ -98,6 +101,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&)
     std::lock_guard<std::mutex> lock(map_mutex);
     // Update current poses of all agents from tf
     updateAgentPoses();
+
 }
 
 void LazyTrafficController::updateAgentPoses() {
