@@ -162,6 +162,10 @@ target_link_libraries(robosar_controller_client
   ${catkin_LIBRARIES}
 )
 
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
+
 target_link_libraries(robosar_traffic_controller_node
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}

@@ -5,7 +5,7 @@
 
 
 LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
-                                                controller_period_s(0.1), nh_("robosar_controller")  {
+                                                controller_period_s(0.1), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
     // Get latest fleet info from agent bringup
@@ -95,9 +95,28 @@ void LazyTrafficController::RunController() {
 
 void LazyTrafficController::computeVelocities(const ros::TimerEvent&)
 {
-    
+    std::lock_guard<std::mutex> lock(map_mutex);
+    // Update current poses of all agents from tf
+    updateAgentPoses();
 }
 
+void LazyTrafficController::updateAgentPoses() {
+    
+    for(auto it = agent_map_.begin(); it != agent_map_.end(); it++) {
+        // Get current pose of agent
+        geometry_msgs::TransformStamped current_pose;
+        try {
+            current_pose = tf_buffer_.lookupTransform(map_frame_id_, it->second.robot_frame_id_, ros::Time(0));
+        }
+        catch (tf2::TransformException &ex) {
+            ROS_WARN("%s",ex.what());
+            //ros::Duration(1.0).sleep();
+            continue;
+        }
+        // Update current pose
+        it->second.current_pose = current_pose;
+    }
+}
 
 void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agents) {
     
