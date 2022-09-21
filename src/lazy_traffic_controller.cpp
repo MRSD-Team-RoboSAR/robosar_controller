@@ -5,7 +5,7 @@
 
 
 LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
-                                                controller_period_s(0.1)  {
+                                                controller_period_s(0.1), nh_("robosar_controller")  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
     // Get latest fleet info from agent bringup
@@ -14,10 +14,13 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
 
     // Get active agents from agent bringup
     active_agents = getFleetStatusInfo();
-    ROS_INFO(" [LAZY_TRAFFIC_CONTROLLER] Active fleet size %ld",active_agents.size());
+    ROS_INFO(" [LT_CONTROLLER] Active fleet size %ld",active_agents.size());
 
     // Initialise agent map
     initialiseAgentMap(active_agents);
+
+    // advertise controller service
+    controller_service = nh_.advertiseService("lazy_traffic_controller", &LazyTrafficController::controllerServiceCallback, this);
 
     // Start controller timer
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LazyTrafficController::computeVelocities, this, _1));
@@ -25,6 +28,44 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
 
 void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
     fleet_status_outdated_ = true;
+}
+
+bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
+                                                      robosar_messages::robosar_controller::Response &res) {
+    
+    if(req.stop_controller) {
+        ROS_INFO(" [LT_CONTROLLER] Emergency stop requested");
+        // TODO
+        // Stop all agents
+    }
+    else {
+        ROS_INFO(" [LT_CONTROLLER] New %ld paths received!", req.paths.size());
+        std::lock_guard<std::mutex> lock(map_mutex);
+        for(int i = 0; i < req.paths.size(); i++) {
+            
+            // Ensure agent is already in the map
+            if(agent_map_.find(req.agent_names[i]) == agent_map_.end()) {
+                ROS_ERROR(" [LT_CONTROLLER] Agent %s not found in the map", &req.agent_names[i][0]);
+                continue;
+            }
+            // Parse path and update agent map
+            if(req.paths[i].poses.size() > 0) {
+                std::queue<geometry_msgs::PoseStamped> path_queue;
+                for(int j = 0; j < req.paths[i].poses.size(); j++) {
+                    path_queue.push(req.paths[i].poses[j]);
+                }
+                agent_map_[req.agent_names[i]].current_path = path_queue;
+            }
+            else {
+                ROS_ERROR(" [LT_CONTROLLER] Empty path received for agent %s", &req.agent_names[i][0]);
+            }
+
+        }
+    }
+
+    res.success = true;
+   
+    return true;
 }
 
 
@@ -36,7 +77,7 @@ LazyTrafficController::~LazyTrafficController() {
 
 void LazyTrafficController::RunController() {
 
-    ROS_INFO("[RoboSAR Controller] Opening the floodgates! ");
+    ROS_INFO("[LT_CONTROLLER] Opening the floodgates! ");
 
     ros::Rate r(1);
     while(ros::ok() && controller_active_) {
@@ -83,7 +124,7 @@ std::set<std::string> LazyTrafficController::getFleetStatusInfo() {
     }
     else
     {
-        ROS_ERROR("[MISSION_EXEC] Failed to call fleet info service");
+        ROS_ERROR("[LT_CONTROLLER] Failed to call fleet info service");
         return active_agents;
     }
 }
