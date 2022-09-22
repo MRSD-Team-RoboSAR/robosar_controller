@@ -101,6 +101,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&)
     std::lock_guard<std::mutex> lock(map_mutex);
     // Update current poses of all agents from tf
     updateAgentPoses();
+    
 
 }
 
