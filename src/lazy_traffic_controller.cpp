@@ -63,7 +63,7 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
                 for(int j = 0; j < req.paths[i].poses.size(); j++) {
                     path_queue.push(req.paths[i].poses[j]);
                 }
-                agent_map_[req.agent_names[i]].current_path = path_queue;
+                //agent_map_[req.agent_names[i]].current_path = path_queue;
             }
             else {
                 ROS_ERROR(" [LT_CONTROLLER] Empty path received for agent %s", &req.agent_names[i][0]);
@@ -103,6 +103,18 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&)
     updateAgentPoses();
     
 
+    // Calculate preferred velocities for all agents
+    updatePreferredVelocities();
+
+
+}
+
+void LazyTrafficController::updatePreferredVelocities() {
+
+    for(auto &agent : agent_map_) {
+        //agent.second.updatePreferredVelocity();
+
+    }
 }
 
 void LazyTrafficController::updateAgentPoses() {
@@ -119,17 +131,14 @@ void LazyTrafficController::updateAgentPoses() {
             continue;
         }
         // Update current pose
-        it->second.current_pose = current_pose;
+        it->second.current_pose_ = current_pose;
     }
 }
 
 void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agents) {
     
     for (auto agent : active_agents) {
-        agent_map_[agent] = Agent_s();
-        agent_map_[agent].name = agent;
-        agent_map_[agent].pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + agent + "/cmd_vel", 1);
-        agent_map_[agent].robot_frame_id_ = agent + "/base_link";
+        agent_map_[agent] = Agent(agent, nh_);
     }
 }
 
