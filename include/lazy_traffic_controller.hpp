@@ -37,8 +37,6 @@ private:
     bool controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
                                    robosar_messages::robosar_controller::Response &res);
     void updateAgentPoses();
-    void updatePreferredVelocities();
-
 
     // miscellanous
     std::thread traffic_controller_thread_;

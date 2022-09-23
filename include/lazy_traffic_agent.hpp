@@ -12,31 +12,35 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <ros/ros.h>
 
+#include "Vector2.h"
+
 class Agent {
 
 public:
     Agent() : name_(""), robot_frame_id_(""), current_path_(), current_pose_() {}
-    Agent(std::string name, ros::NodeHandle nh) : name_(name), robot_frame_id_(name + "/base_link"), nh_(nh) {
+    Agent(std::string name, ros::NodeHandle nh) : name_(name), robot_frame_id_(name + "/base_link"), nh_(nh),
+                                                  ld_(0.4), v_max_(0.2) {
         // Initialise publisher
         pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + name + "/cmd_vel", 1);
     }
     ~Agent() {}
 
-    void stop_agent(void) {
-        // TODO Check if velocity is non zero 
-        geometry_msgs::Twist vel;
-        vel.linear.x = 0.0;
-        vel.angular.z = 0.0;
-        pub_vel_.publish(vel);
-    }
+    void stopAgent(void);
+    void updatePreferredVelocity(void);
 
     std::string robot_frame_id_;
     std::queue<geometry_msgs::PoseStamped> current_path_;
     geometry_msgs::TransformStamped current_pose_;
 private:
+    void ppProcessLookahead(geometry_msgs::Transform current_pose);
     ros::Publisher pub_vel_;
     std::string name_;
     ros::NodeHandle nh_;
+    double ld_;
+    geometry_msgs::TransformStamped lookahead_;
+
+    RVO::Vector2 preferred_velocity_;
+    double v_max_;
 
 
 };

@@ -45,7 +45,7 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
         // TODO
         // Stop all agents
         for(auto &agent : agent_map_) {
-            agent.second.stop_agent();
+            agent.second.stopAgent();
         }
     }
     else {
@@ -63,7 +63,7 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
                 for(int j = 0; j < req.paths[i].poses.size(); j++) {
                     path_queue.push(req.paths[i].poses[j]);
                 }
-                //agent_map_[req.agent_names[i]].current_path = path_queue;
+                agent_map_[req.agent_names[i]].current_path_ = path_queue;
             }
             else {
                 ROS_ERROR(" [LT_CONTROLLER] Empty path received for agent %s", &req.agent_names[i][0]);
@@ -96,25 +96,22 @@ void LazyTrafficController::RunController() {
 
 }
 
-void LazyTrafficController::computeVelocities(const ros::TimerEvent&)
-{
+void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
+    
     std::lock_guard<std::mutex> lock(map_mutex);
     // Update current poses of all agents from tf
     updateAgentPoses();
 
     // Calculate preferred velocities for all agents
-    updatePreferredVelocities();
-
-
-}
-
-void LazyTrafficController::updatePreferredVelocities() {
-
     for(auto &agent : agent_map_) {
-        //agent.second.updatePreferredVelocity();
+        agent.second.updatePreferredVelocity();
 
     }
+
+
 }
+
+    
 
 void LazyTrafficController::updateAgentPoses() {
     

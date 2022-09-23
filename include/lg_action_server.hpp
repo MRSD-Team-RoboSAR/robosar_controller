@@ -95,8 +95,8 @@ public:
     receivePath(goal->path);
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LGControllerAction::computeVelocities, this, _1));
     pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/"+action_name_+"/cmd_vel", 1);
-    while(!goal_reached_)
-    {
+    while(!goal_reached_) {
+      
       if (as_.isPreemptRequested() || !ros::ok())
       {
         ROS_INFO("%s: Preempted", action_name_.c_str());
