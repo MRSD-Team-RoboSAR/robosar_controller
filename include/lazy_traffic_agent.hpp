@@ -37,8 +37,6 @@ private:
     ros::Publisher pub_vel_;
     std::string name_;
     ros::NodeHandle nh_;
-
-
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H
