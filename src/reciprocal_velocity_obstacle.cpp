@@ -5,16 +5,18 @@
 using namespace RVO;
 using namespace std;
 
-void RecVelocityObs::computeNewVelocity(int agent_id, Vector2 vel_pref, map<string,Vector2>& velocity_vector, map<string,Vector2>& position_vector) {
+Vector2 RecVelocityObs::computeNewVelocity() {
 
     Vector2 vel_cand;
+    Vector2 vel_new;
     float min_penalty = INFINITY;
+    computeNearestNeighbors(m_agent_map,m_pos_curr);
     for(int i=0;i<NUM_VELOCITY_SAMPLES;i++)
     {
 
         if(i==0) 
         {
-            vel_cand = vel_pref;
+            vel_cand = m_vel_pref;
         }
         else 
         {
@@ -32,7 +34,7 @@ void RecVelocityObs::computeNewVelocity(int agent_id, Vector2 vel_pref, map<stri
         }
         else
         {
-            dist_to_pref_vel = abs(vel_cand - vel_pref);
+            dist_to_pref_vel = abs(vel_cand - m_vel_pref);
         }
         float min_t_to_collision = INFINITY;
         for(auto n: m_neighbors)
@@ -41,10 +43,10 @@ void RecVelocityObs::computeNewVelocity(int agent_id, Vector2 vel_pref, map<stri
             // Change code accordingly
             float t_to_collision;
             Vector2 vel_a_to_b;
-            Vector2 vel_b = velocity_vector[n.first];
+            Vector2 vel_b = m_velocity_vector[n.first];
             vel_a_to_b = 2*vel_cand - m_vel_curr - vel_b;
             
-            float time = RecVelocityObs::timeToCollision(m_pos_curr, vel_a_to_b, position_vector[n.first], RADIUS_MULT_FACTOR*AGENT_RADIUS, m_is_collision);
+            float time = RecVelocityObs::timeToCollision(m_pos_curr, vel_a_to_b, m_position_vector[n.first], RADIUS_MULT_FACTOR*AGENT_RADIUS, m_is_collision);
             if(m_is_collision) 
             {
                 t_to_collision = -ceil(time / TIME_STEP);
@@ -66,11 +68,11 @@ void RecVelocityObs::computeNewVelocity(int agent_id, Vector2 vel_pref, map<stri
         if(penalty < min_penalty)
         {
             min_penalty = penalty;
-            m_vel_new = vel_cand;
+            vel_new = vel_cand;
         }
 
     }
-    computeNearestNeighbors(m_agent_map,m_pos_curr);
+    return vel_new;
 }
 
 float RecVelocityObs::timeToCollision(const Vector2& ego_position, const Vector2& vel_a_to_b, const Vector2& neighbor_position, float obstacle_radius, bool& is_in_collision) {

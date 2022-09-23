@@ -36,20 +36,43 @@ using namespace std;
 typedef pair<string, float> dist;
 
 class RecVelocityObs {
+    
     private:
         vector<dist> m_neighbors = vector<dist>(MAX_NEIGHBORS);
         map<string, Agent> m_agent_map;
+        RVO::Vector2 m_vel_pref;
+        map<string,RVO::Vector2> m_velocity_vector;
+        map<string, RVO::Vector2> m_position_vector;
+        RVO::Vector2 m_pos_curr;
+        RVO::Vector2 m_vel_curr;
         void computeNearestNeighbors(map<string, Agent> agent_map_, RVO::Vector2);
+        RVO::Vector2 computeNewVelocity();
+        bool m_is_collision = false;
+        float timeToCollision(const RVO::Vector2& p, const RVO::Vector2& v, const RVO::Vector2& p2, float radius, bool& collision);
+    
     public:
 
-        RecVelocityObs(void){};
+        RecVelocityObs(map<string, Agent> agent_map_)
+        {
+            m_agent_map = agent_map_;
+            
+            for(auto agent:m_agent_map)
+            {
+                m_velocity_vector[agent.first] = agent.second.current_velocity;
+                m_vel_curr = agent.second.current_velocity;
+                RVO::Vector2 current_pose(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
+                m_position_vector[agent.first] = current_pose;
+                m_pos_curr = current_pose;
+                m_vel_pref = agent.second.preferred_velocity;
+            }
+            m_vel_new = computeNewVelocity();
+        }
+
         ~RecVelocityObs(void){};
                                 // int agent_id, RVO::Vector2 vel_pref, vector<RVO::Vector2>& velocity_vector, vector<RVO::Vector2>& position_vector, priority_queue< pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>> > neighbors
-        void computeNewVelocity(int agent_id, RVO::Vector2 vel_pref, map<string,RVO::Vector2>& velocity_vector, map<string,RVO::Vector2>& position_vector);
-        bool m_is_collision = false;
-        RVO::Vector2 m_vel_curr;
+        
+        
         RVO::Vector2 m_vel_new;
-        RVO::Vector2 m_pos_curr;
-        float timeToCollision(const RVO::Vector2& p, const RVO::Vector2& v, const RVO::Vector2& p2, float radius, bool& collision);
+        
 };
 #endif // RECIPROCAL_VELOCITY_OBSTACLE_H

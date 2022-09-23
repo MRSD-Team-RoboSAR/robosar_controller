@@ -10,7 +10,7 @@ int main(int argc, char **argv)
   //move_base::MoveBase move_base( buffer );
   
   LazyTrafficController traffic_controller_session;
-  RecVelocityObs rvo;
+  
 
   //ros::MultiThreadedSpinner s;
   ros::spin();

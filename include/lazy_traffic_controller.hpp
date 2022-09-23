@@ -11,13 +11,14 @@
 
 #include "robosar_messages/robosar_controller.h"
 #include "lazy_traffic_agent.hpp"
-
+#include "reciprocal_velocity_obstacle.hpp"
 // ROS stuff
 #include <tf/tf.h>
 #include <tf2_ros/transform_listener.h>
 #include <ros/console.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
+
 
 class LazyTrafficController {
 
