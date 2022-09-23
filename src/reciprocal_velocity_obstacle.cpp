@@ -10,13 +10,13 @@ Vector2 RecVelocityObs::computeNewVelocity() {
     Vector2 vel_cand;
     Vector2 vel_new;
     float min_penalty = INFINITY;
-    computeNearestNeighbors(m_agent_map,m_pos_curr);
+    computeNearestNeighbors();
     for(int i=0;i<NUM_VELOCITY_SAMPLES;i++)
     {
 
         if(i==0) 
         {
-            vel_cand = m_vel_pref;
+            vel_cand = vel_pref_;
         }
         else 
         {
@@ -28,26 +28,26 @@ Vector2 RecVelocityObs::computeNewVelocity() {
         }
 
         float dist_to_pref_vel ;
-        if(m_is_collision)
+        if(is_collision_)
         {
             dist_to_pref_vel = 0;
         }
         else
         {
-            dist_to_pref_vel = abs(vel_cand - m_vel_pref);
+            dist_to_pref_vel = abs(vel_cand - vel_pref_);
         }
         float min_t_to_collision = INFINITY;
-        for(auto n: m_neighbors)
+        for(auto n: neighbors_)
         {
             // If neighbor is an obstacle, agent_Radius, position and other attributes would change
             // Change code accordingly
             float t_to_collision;
             Vector2 vel_a_to_b;
-            Vector2 vel_b = m_velocity_vector[n.first];
-            vel_a_to_b = 2*vel_cand - m_vel_curr - vel_b;
+            Vector2 vel_b = velocity_vector_[n.first];
+            vel_a_to_b = 2*vel_cand - vel_curr_ - vel_b;
             
-            float time = RecVelocityObs::timeToCollision(m_pos_curr, vel_a_to_b, m_position_vector[n.first], RADIUS_MULT_FACTOR*AGENT_RADIUS, m_is_collision);
-            if(m_is_collision) 
+            float time = RecVelocityObs::timeToCollision(pos_curr_, vel_a_to_b, position_vector_[n.first], RADIUS_MULT_FACTOR*AGENT_RADIUS, is_collision_);
+            if(is_collision_) 
             {
                 t_to_collision = -ceil(time / TIME_STEP);
                 t_to_collision -= absSq(vel_cand) / (MAX_SPEED*MAX_SPEED);
@@ -112,7 +112,7 @@ float RecVelocityObs::timeToCollision(const Vector2& ego_position, const Vector2
     } 
     return time;
 }
-void RecVelocityObs::computeNearestNeighbors(map<string, Agent> agent_map_, Vector2 m_pos_curr)
+void RecVelocityObs::computeNearestNeighbors()
 {
     priority_queue<dist, vector<dist>, greater<dist>> all_agents;
     for(auto agent:agent_map_)
@@ -120,7 +120,7 @@ void RecVelocityObs::computeNearestNeighbors(map<string, Agent> agent_map_, Vect
         
         Vector2 pos_neigh_agent(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
         string agent_name = agent.first;
-        float euc_distance = euc_dist(pos_neigh_agent,m_pos_curr);
+        float euc_distance = euc_dist(pos_neigh_agent,pos_curr_);
         if(euc_distance < MAX_NEIGH_DISTANCE)
             all_agents.push(make_pair(agent_name,euc_distance));
         // compute euclidian distance between ego agent and every other agent
@@ -135,6 +135,6 @@ void RecVelocityObs::computeNearestNeighbors(map<string, Agent> agent_map_, Vect
             break;
         dist agent_pair = all_agents.top();
         all_agents.pop();
-        m_neighbors[i] = agent_pair;
+        neighbors_[i] = agent_pair;
     }
 }

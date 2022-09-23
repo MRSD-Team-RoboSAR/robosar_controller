@@ -38,32 +38,32 @@ typedef pair<string, float> dist;
 class RecVelocityObs {
     
     private:
-        vector<dist> m_neighbors = vector<dist>(MAX_NEIGHBORS);
-        map<string, Agent> m_agent_map;
-        RVO::Vector2 m_vel_pref;
-        map<string,RVO::Vector2> m_velocity_vector;
-        map<string, RVO::Vector2> m_position_vector;
-        RVO::Vector2 m_pos_curr;
-        RVO::Vector2 m_vel_curr;
-        void computeNearestNeighbors(map<string, Agent> agent_map_, RVO::Vector2);
+        vector<dist> neighbors_ = vector<dist>(MAX_NEIGHBORS);
+        map<string, Agent> agent_map_;
+        RVO::Vector2 vel_pref_;
+        map<string,RVO::Vector2> velocity_vector_;
+        map<string, RVO::Vector2> position_vector_;
+        RVO::Vector2 pos_curr_;
+        RVO::Vector2 vel_curr_;
+        void computeNearestNeighbors();
         RVO::Vector2 computeNewVelocity();
-        bool m_is_collision = false;
+        bool is_collision_ = false;
         float timeToCollision(const RVO::Vector2& p, const RVO::Vector2& v, const RVO::Vector2& p2, float radius, bool& collision);
     
     public:
 
-        RecVelocityObs(map<string, Agent> agent_map_)
+        RecVelocityObs(map<string, Agent> agent_map)
         {
-            m_agent_map = agent_map_;
+            agent_map_ = agent_map;
             
-            for(auto agent:m_agent_map)
+            for(auto agent:agent_map_)
             {
-                m_velocity_vector[agent.first] = agent.second.current_velocity;
-                m_vel_curr = agent.second.current_velocity;
+                velocity_vector_[agent.first] = agent.second.current_velocity;
+                vel_curr_ = agent.second.current_velocity;
                 RVO::Vector2 current_pose(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
-                m_position_vector[agent.first] = current_pose;
-                m_pos_curr = current_pose;
-                m_vel_pref = agent.second.preferred_velocity;
+                position_vector_[agent.first] = current_pose;
+                pos_curr_ = current_pose;
+                vel_pref_ = agent.second.preferred_velocity;
             }
             m_vel_new = computeNewVelocity();
         }
