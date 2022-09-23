@@ -33,8 +33,9 @@ public:
     std::string robot_frame_id_;
     std::queue<geometry_msgs::PoseStamped> current_path_;
     geometry_msgs::TransformStamped current_pose_;
-    RVO::Vector2 preferred_velocity;
-    RVO::Vector2 current_velocity;
+    RVO::Vector2 preferred_velocity_;
+    RVO::Vector2 current_velocity_;
+    RVO::Vector2 computed_velocity_;
 private:
     ros::Publisher pub_vel_;
     std::string name_;

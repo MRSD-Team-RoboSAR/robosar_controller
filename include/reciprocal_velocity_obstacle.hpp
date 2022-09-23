@@ -52,27 +52,32 @@ class RecVelocityObs {
     
     public:
 
-        RecVelocityObs(map<string, Agent> agent_map)
+        RecVelocityObs(map<string, Agent> agent_map, string agent_name)
         {
             agent_map_ = agent_map;
             
             for(auto agent:agent_map_)
             {
-                velocity_vector_[agent.first] = agent.second.current_velocity;
-                vel_curr_ = agent.second.current_velocity;
+                velocity_vector_[agent.first] = agent.second.current_velocity_;
+                
                 RVO::Vector2 current_pose(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
                 position_vector_[agent.first] = current_pose;
-                pos_curr_ = current_pose;
-                vel_pref_ = agent.second.preferred_velocity;
+                if(agent.first == agent_name)
+                {
+                    vel_curr_ = agent.second.current_velocity_;
+                    vel_pref_ = agent.second.preferred_velocity_;
+                    pos_curr_ = current_pose;
+                }
+                
             }
-            m_vel_new = computeNewVelocity();
+            vel_computed_ = computeNewVelocity();
         }
 
         ~RecVelocityObs(void){};
                                 // int agent_id, RVO::Vector2 vel_pref, vector<RVO::Vector2>& velocity_vector, vector<RVO::Vector2>& position_vector, priority_queue< pair<int,int>, vector<pair<int,int>>, greater<pair<int,int>> > neighbors
         
         
-        RVO::Vector2 m_vel_new;
+        RVO::Vector2 vel_computed_;
         
 };
 #endif // RECIPROCAL_VELOCITY_OBSTACLE_H

@@ -106,10 +106,11 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&)
     // Calculate preferred velocities for all agents
     updatePreferredVelocities();
 
-    
-
-
-
+    for(auto &agent: agent_map_)
+    {
+        RecVelocityObs rvo(agent_map_,agent.first);
+        agent.second.computed_velocity_ = rvo.vel_computed_;
+    }
 
 }
 

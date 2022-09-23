@@ -8,7 +8,7 @@ using namespace std;
 Vector2 RecVelocityObs::computeNewVelocity() {
 
     Vector2 vel_cand;
-    Vector2 vel_new;
+    Vector2 vel_computed;
     float min_penalty = INFINITY;
     computeNearestNeighbors();
     for(int i=0;i<NUM_VELOCITY_SAMPLES;i++)
@@ -68,11 +68,11 @@ Vector2 RecVelocityObs::computeNewVelocity() {
         if(penalty < min_penalty)
         {
             min_penalty = penalty;
-            vel_new = vel_cand;
+            vel_computed = vel_cand;
         }
 
     }
-    return vel_new;
+    return vel_computed;
 }
 
 float RecVelocityObs::timeToCollision(const Vector2& ego_position, const Vector2& vel_a_to_b, const Vector2& neighbor_position, float obstacle_radius, bool& is_in_collision) {
