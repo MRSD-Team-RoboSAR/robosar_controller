@@ -16,7 +16,9 @@ void Agent::sendVelocity(RVO::Vector2 velo) {
       if(velo.x() == 0.0 && velo.y() == 0.0) {
           return;
       }
-      
+      // Update status
+      status.data = status.BUSY;
+
       geometry_msgs::Twist vel;
       vel.linear.x = v_max_;
 
@@ -41,6 +43,7 @@ void Agent::updatePreferredVelocity() {
         preferred_velocity_ = RVO::Vector2(0.0, 0.0);
         stopAgent();
         ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
+        status.data = status.SUCCEEDED;
     }
     else {
         ppProcessLookahead(current_pose_.transform);

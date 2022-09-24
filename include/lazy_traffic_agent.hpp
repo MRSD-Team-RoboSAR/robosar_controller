@@ -12,6 +12,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <ros/ros.h>
 #include <tf/tf.h>
+#include "robosar_messages/controller_status.h"
 
 #include "Vector2.h"
 
@@ -23,9 +24,14 @@ public:
                                                   ld_(0.4), v_max_(0.2), goal_threshold(0.2), w_max_(1.0) {
         // Initialise publisher
         pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + name + "/cmd_vel", 1);
+        pub_status_ = nh_.advertise<robosar_messages::controller_status>("/lazy_traffic_controller/" + name + "/status", 1);
+        status.data = status.IDLE;
     }
     ~Agent() {}
 
+    void publishStatus() {
+        pub_status_.publish(status);
+    }
     void sendVelocity(RVO::Vector2 vel);
     void stopAgent(void);
     void updatePreferredVelocity(void);
@@ -34,20 +40,23 @@ public:
     std::queue<geometry_msgs::PoseStamped> current_path_;
     geometry_msgs::TransformStamped current_pose_;
     RVO::Vector2 preferred_velocity_;
+
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
     RVO::Vector2 getCurrentHeading();
-    double goal_threshold;
     
     ros::Publisher pub_vel_;
-    std::string name_;
+    ros::Publisher pub_status_;
     ros::NodeHandle nh_;
-    double ld_;
     geometry_msgs::TransformStamped lookahead_;
+    robosar_messages::controller_status status;
 
     double v_max_;
     double w_max_;
+    double ld_;
+    double goal_threshold;
+    std::string name_;
 
 
 };

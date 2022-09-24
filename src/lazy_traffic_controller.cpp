@@ -10,14 +10,15 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
     // Get latest fleet info from agent bringup
     status_client = nh_.serviceClient<robosar_messages::agent_status>("/robosar_agent_bringup_node/agent_status");
-    traffic_controller_thread_ = std::thread(&LazyTrafficController::RunController, this);
-
     // Get active agents from agent bringup
     active_agents = getFleetStatusInfo();
     ROS_INFO(" [LT_CONTROLLER] Active fleet size %ld",active_agents.size());
 
     // Initialise agent map
     initialiseAgentMap(active_agents);
+
+    // Start controller thread
+    traffic_controller_thread_ = std::thread(&LazyTrafficController::RunController, this);
 
     // advertise controller service
     controller_service = nh_.advertiseService("lazy_traffic_controller", &LazyTrafficController::controllerServiceCallback, this);
@@ -107,6 +108,8 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
         agent.second.updatePreferredVelocity();
 
         agent.second.sendVelocity(agent.second.preferred_velocity_);
+        // Inform other subsystems of the controller status
+        agent.second.publishStatus();
     }
 
 
@@ -142,6 +145,8 @@ void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agen
 std::set<std::string> LazyTrafficController::getFleetStatusInfo() {
 
     robosar_messages::agent_status srv;
+    // wait for service to be available
+    status_client.waitForExistence();
 
     if (status_client.call(srv)) {
         std::vector<std::string> agentsVec = srv.response.agents_active;
