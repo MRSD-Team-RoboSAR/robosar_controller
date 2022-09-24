@@ -106,6 +106,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
     for(auto &agent : agent_map_) {
         agent.second.updatePreferredVelocity();
 
+        agent.second.sendVelocity(agent.second.preferred_velocity_);
     }
 
 

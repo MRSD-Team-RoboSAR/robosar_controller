@@ -2,19 +2,45 @@
 
 #include "lazy_traffic_agent.hpp"
 
-  void Agent::stopAgent(void) {
-        // TODO Check if velocity is non zero 
-        geometry_msgs::Twist vel;
-        vel.linear.x = 0.0;
-        vel.angular.z = 0.0;
-        pub_vel_.publish(vel);
-    }
+void Agent::stopAgent(void) {
+      // TODO Check if velocity is non zero 
+      geometry_msgs::Twist vel;
+      vel.linear.x = 0.0;
+      vel.angular.z = 0.0;
+      pub_vel_.publish(vel);
+}
+
+void Agent::sendVelocity(RVO::Vector2 velo) {
+      
+      // Check if velocity is non zero
+      if(velo.x() == 0.0 && velo.y() == 0.0) {
+          return;
+      }
+      
+      geometry_msgs::Twist vel;
+      vel.linear.x = v_max_;
+
+      // Get current heading
+      vel.angular.z = getCurrentHeading()*velo;
+      double angular_velo = std::min( fabs(vel.angular.z ), w_max_ );
+      vel.angular.z = copysign(angular_velo, vel.angular.z);
+
+      pub_vel_.publish(vel);
+  }
 
 void Agent::updatePreferredVelocity() {
 
     if(current_path_.empty()) {
+        preferred_velocity_ = RVO::Vector2(0.0, 0.0);
         //stopAgent();
         //return;
+    }
+    else if(current_path_.size() == 1 && checkifGoalReached()) {
+
+        current_path_.pop();
+        preferred_velocity_ = RVO::Vector2(0.0, 0.0);
+        stopAgent();
+        ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
     }
     else {
         ppProcessLookahead(current_pose_.transform);
@@ -72,3 +98,28 @@ void Agent::ppProcessLookahead(geometry_msgs::Transform current_pose) {
     }
 
   }
+
+ bool Agent::checkifGoalReached() {
+
+    double distance_to_goal = distance(current_pose_.transform.translation, current_path_.front().pose.position);
+    if(distance_to_goal <= goal_threshold)
+    {
+      ROS_WARN("Goal reached!");
+      return true;
+    }
+    else 
+      return false; 
+  }
+
+RVO::Vector2 Agent::getCurrentHeading() {
+
+  tf::Quaternion quat(current_pose_.transform.rotation.x, current_pose_.transform.rotation.y, current_pose_.transform.rotation.z, current_pose_.transform.rotation.w);
+  
+  // Convert to RPY
+  double roll, pitch, yaw;
+  tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+
+  // Convert to unit vector
+  RVO::Vector2 heading(cos(yaw), sin(yaw));
+  return heading;
+}
