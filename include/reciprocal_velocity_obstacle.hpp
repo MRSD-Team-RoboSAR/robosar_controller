@@ -54,21 +54,22 @@ class RecVelocityObs {
 
         RecVelocityObs(map<string, Agent> agent_map, string agent_name)
         {
-            agent_map_ = agent_map;
             
-            for(auto agent:agent_map_)
+            // Pass agent map and current position to computeNeighbors 
+            //populate velocity vector based on neighbor
+            //call compute velocity
+            
+            agent_map_ = agent_map;      
+            RVO::Vector2 current_pose(agent_map_[agent_name].current_pose_.transform.translation.x, agent_map_[agent_name].current_pose_.transform.translation.y);
+            pos_curr_ = current_pose;
+            vel_curr_ = agent_map_[agent_name].current_velocity_;
+            vel_pref_ = agent_map_[agent_name].preferred_velocity_;
+            computeNearestNeighbors();
+            for(auto n:neighbors_)
             {
-                velocity_vector_[agent.first] = agent.second.current_velocity_;
-                
-                RVO::Vector2 current_pose(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
-                position_vector_[agent.first] = current_pose;
-                if(agent.first == agent_name)
-                {
-                    vel_curr_ = agent.second.current_velocity_;
-                    vel_pref_ = agent.second.preferred_velocity_;
-                    pos_curr_ = current_pose;
-                }
-                
+                velocity_vector_[n.first] = agent_map_[n.first].current_velocity_;
+                RVO::Vector2 pose_(agent_map_[n.first].current_pose_.transform.translation.x, agent_map_[n.first].current_pose_.transform.translation.y);
+                position_vector_[n.first] = pose_;
             }
             vel_computed_ = computeNewVelocity();
         }
