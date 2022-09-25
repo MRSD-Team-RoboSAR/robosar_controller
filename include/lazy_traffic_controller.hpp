@@ -18,7 +18,7 @@
 #include <ros/console.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
-
+#include<unordered_map>
 
 class LazyTrafficController {
 
@@ -50,7 +50,7 @@ private:
     std::mutex map_mutex;
 
     // controller data structures
-    std::map<std::string, Agent> agent_map_;
+    std::unordered_map<std::string, Agent> agent_map_;
     std::set<std::string> active_agents;
 
     // ROS stuff

@@ -24,6 +24,7 @@
 #include "Vector2.h"
 #include <queue>
 #include <map>
+#include <unordered_map>
 #define NUM_VELOCITY_SAMPLES 5 //NUMBER OF SAMPLES PER EACH AGENT
 #define MAX_SPEED 1.5 // Maximum speed of agent
 #define AGENT_RADIUS 1.3 // Radius of agent
@@ -39,10 +40,10 @@ class RecVelocityObs {
     
     private:
         vector<dist> neighbors_ = vector<dist>(MAX_NEIGHBORS);
-        map<string, Agent> agent_map_;
+        unordered_map<string, Agent> agent_map_;
         RVO::Vector2 vel_pref_;
-        map<string,RVO::Vector2> velocity_vector_;
-        map<string, RVO::Vector2> position_vector_;
+        unordered_map<string,RVO::Vector2> velocity_vector_;
+        unordered_map<string, RVO::Vector2> position_vector_;
         RVO::Vector2 pos_curr_;
         RVO::Vector2 vel_curr_;
         void computeNearestNeighbors();
@@ -52,7 +53,7 @@ class RecVelocityObs {
     
     public:
 
-        RecVelocityObs(map<string, Agent> agent_map, string agent_name)
+        RecVelocityObs(unordered_map<string, Agent> agent_map, string agent_name)
         {
             
             // Pass agent map and current position to computeNeighbors 
