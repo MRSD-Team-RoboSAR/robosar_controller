@@ -16,16 +16,21 @@ void Agent::sendVelocity(RVO::Vector2 velo) {
       if(velo.x() == 0.0 && velo.y() == 0.0) {
           return;
       }
-      // Update status
+      // Update status because sending non zero velocity
       status.data = status.BUSY;
 
       geometry_msgs::Twist vel;
       vel.linear.x = v_max_;
 
-      // Get current heading
-      vel.angular.z = getCurrentHeading()*velo;
-      double angular_velo = std::min( fabs(vel.angular.z ), w_max_ );
-      vel.angular.z = copysign(angular_velo, vel.angular.z);
+      // Get heading diff with a dot product
+      RVO::Vector2 heading = getCurrentHeading();
+      RVO::Vector2 velo_norm = norm(velo);
+      // Calculate cross product
+      double cross_product = heading.x() * velo_norm.y() - heading.y() * velo_norm.x();
+      // Calculate dot product
+      vel.angular.z = acos(getCurrentHeading()*velo_norm);
+      vel.angular.z = std::min( fabs(vel.angular.z ), w_max_ );
+      vel.angular.z = copysign(vel.angular.z, cross_product);
 
       pub_vel_.publish(vel);
   }
@@ -53,7 +58,6 @@ void Agent::updatePreferredVelocity() {
                                            lookahead_.transform.translation.y - current_pose_.transform.translation.y);  
         preferred_velocity_ = norm(preferred_velocity_);
         preferred_velocity_ *= v_max_;
-
     }
 }
 
@@ -61,7 +65,7 @@ void Agent::updatePreferredVelocity() {
 template<typename T1, typename T2>
 double distance(T1 pt1, T2 pt2)
 {
-  return sqrt(pow(pt1.x - pt2.x,2) + pow(pt1.y - pt2.y,2) + pow(pt1.z - pt2.z,2));
+  return sqrt(pow(pt1.x - pt2.x,2) + pow(pt1.y - pt2.y,2));
 }
 
 
@@ -69,9 +73,10 @@ void Agent::ppProcessLookahead(geometry_msgs::Transform current_pose) {
 
     //for (; pp_idx_ < cartesian_path_.poses.size(); pp_idx_++)
     int pp_idx_ = 0;
-    while(current_path_.size()>=1)
+    while(current_path_.size()>1)
     {
-      if (distance( current_path_.front().pose.position, current_pose.translation) > ld_ )
+      double dist_to_path = distance( current_path_.front().pose.position, current_pose.translation);
+      if (dist_to_path > ld_ )
       {
         // Save this as the lookahead point
         lookahead_.transform.translation.x = current_path_.front().pose.position.x;
