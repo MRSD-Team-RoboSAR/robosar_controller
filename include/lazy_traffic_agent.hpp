@@ -42,17 +42,19 @@ public:
     void sendVelocity(RVO::Vector2 vel);
     void stopAgent(void);
     void updatePreferredVelocity(void);
-    void invokeRVO(std::map<std::string, Agent> agent_map);
+    void invokeRVO(std::unordered_map<std::string, Agent> agent_map);
 
     std::string robot_frame_id_;
     std::queue<geometry_msgs::PoseStamped> current_path_;
     geometry_msgs::TransformStamped current_pose_;
     RVO::Vector2 preferred_velocity_;
+    RVO::Vector2 current_velocity_;
+    RVO::Vector2 computed_velocity_;
 
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
-    void computeNearestNeighbors(std::map<std::string, Agent> agent_map);
+    void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     RVO::Vector2 getCurrentHeading();
     
     ros::Publisher pub_vel_;

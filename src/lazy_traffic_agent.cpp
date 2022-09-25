@@ -1,6 +1,7 @@
 // Created by Indraneel on 22/09/22
 
 #include "lazy_traffic_agent.hpp"
+#include "lazy_traffic_rvo.hpp"
 
 void Agent::stopAgent(void) {
       // TODO Check if velocity is non zero 
@@ -132,14 +133,18 @@ RVO::Vector2 Agent::getCurrentHeading() {
   return heading;
 }
 
-void Agent::invokeRVO(std::map<std::string, Agent> agent_map) {
+void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map) {
 
   // Calculate neighbours
   computeNearestNeighbors(agent_map);
 
+  // Calculate new velocity
+  rvoComputeNewVelocity();
+
+  // Handle the calculated velocity
 }
 
-void Agent::computeNearestNeighbors(std::map<std::string, Agent> agent_map)
+void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
 {
     priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
     RVO::Vector2 my_pose(current_pose_.transform.translation.x, current_pose_.transform.translation.y);

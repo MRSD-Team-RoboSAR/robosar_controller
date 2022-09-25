@@ -8,6 +8,7 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include<unordered_map>
 
 #include "robosar_messages/robosar_controller.h"
 #include "lazy_traffic_agent.hpp"
@@ -47,7 +48,7 @@ private:
     std::mutex map_mutex;
 
     // controller data structures
-    std::map<std::string, Agent> agent_map_;
+    std::unordered_map<std::string, Agent> agent_map_;
     std::set<std::string> active_agents;
 
     // ROS stuff
