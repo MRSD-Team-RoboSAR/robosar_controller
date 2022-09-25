@@ -10,7 +10,6 @@ Vector2 RecVelocityObs::computeNewVelocity() {
     Vector2 vel_cand;
     Vector2 vel_computed;
     float min_penalty = INFINITY;
-    computeNearestNeighbors();
     for(int i=0;i<NUM_VELOCITY_SAMPLES;i++)
     {
 
