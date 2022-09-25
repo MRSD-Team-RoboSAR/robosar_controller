@@ -15,7 +15,14 @@
 #include "robosar_messages/controller_status.h"
 
 #include "Vector2.h"
+#include "lazy_traffic_rvo.hpp"
 
+typedef pair<string, float> AgentDistPair;
+
+using namespace std;
+
+#define MAX_NEIGHBORS 4 // Maximum number of neighbors to consider
+#define MAX_NEIGH_DISTANCE 2.00 //Max distance among neighbors
 class Agent {
 
 public:
@@ -35,6 +42,7 @@ public:
     void sendVelocity(RVO::Vector2 vel);
     void stopAgent(void);
     void updatePreferredVelocity(void);
+    void invokeRVO(std::map<std::string, Agent> agent_map);
 
     std::string robot_frame_id_;
     std::queue<geometry_msgs::PoseStamped> current_path_;
@@ -44,6 +52,7 @@ public:
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
+    void computeNearestNeighbors(std::map<std::string, Agent> agent_map);
     RVO::Vector2 getCurrentHeading();
     
     ros::Publisher pub_vel_;
@@ -57,6 +66,9 @@ private:
     double ld_;
     double goal_threshold;
     std::string name_;
+
+    // velocity obstacles related
+    std::vector<AgentDistPair> neighbors_;
 
 
 };

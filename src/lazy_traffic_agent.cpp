@@ -131,3 +131,38 @@ RVO::Vector2 Agent::getCurrentHeading() {
   RVO::Vector2 heading(cos(yaw), sin(yaw));
   return heading;
 }
+
+void Agent::invokeRVO(std::map<std::string, Agent> agent_map) {
+
+  // Calculate neighbours
+  computeNearestNeighbors(agent_map);
+
+}
+
+void Agent::computeNearestNeighbors(std::map<std::string, Agent> agent_map)
+{
+    priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
+    RVO::Vector2 my_pose(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
+    neighbors_.clear();
+
+    // Crop agents based on distance
+    for(const auto& agent:agent_map) {
+
+        RVO::Vector2 neigh_agent_pos(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
+        string neighbour_agent_name = agent.first;
+        float euc_distance = euc_dist(neigh_agent_pos,my_pose);
+
+        if(euc_distance < MAX_NEIGH_DISTANCE)
+            all_neighbors.push(make_pair(neighbour_agent_name,euc_distance));
+    }
+
+    // Crop agents based on max neighbours
+    for(int i=0;i<MAX_NEIGHBORS;i++){
+
+      if(all_neighbors.empty()) 
+          break;
+      AgentDistPair agent_dist_pair = all_neighbors.top();
+      all_neighbors.pop();
+      neighbors_.push_back(agent_dist_pair);
+    }
+}
