@@ -41,10 +41,13 @@ public:
     }
     void sendVelocity(RVO::Vector2 vel);
     void stopAgent(void);
+    
     void updatePreferredVelocity(void);
+    // Function to call reciprocal Velocity Obstacles
     void invokeRVO(std::unordered_map<std::string, Agent> agent_map);
 
     std::string robot_frame_id_;
+    //Velocity Obstacle related members
     std::queue<geometry_msgs::PoseStamped> current_path_;
     geometry_msgs::TransformStamped current_pose_;
     RVO::Vector2 preferred_velocity_;
@@ -54,6 +57,7 @@ public:
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
+    //Function to compute Nearest Neighbors of an agent using euclidian distance
     void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     RVO::Vector2 getCurrentHeading();
     
@@ -69,8 +73,7 @@ private:
     double goal_threshold;
     std::string name_;
 
-    // velocity obstacles related
-    // std::vector<AgentDistPair> neighbors_;
+    // Velocity obstacles related members
     std::vector<rvo_agent_info_s> neighbors_list_;
     rvo_agent_info_s my_info;
 };

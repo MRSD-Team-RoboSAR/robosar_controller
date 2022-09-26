@@ -151,8 +151,9 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   rvo_agent_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position};
   bool is_collision = false;
+  
   // Calculate new velocity
-  rvoComputeNewVelocity(is_collision, my_info, neighbors_list_, name_);
+  preferred_velocity_ = rvoComputeNewVelocity(is_collision, my_info, neighbors_list_, name_);
 
   // Handle the calculated velocity
 }

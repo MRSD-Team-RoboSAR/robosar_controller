@@ -43,6 +43,7 @@ typedef struct rvo_agent_info {
   RVO::Vector2 current_position;
 } rvo_agent_info_s;
 
+//Function to compute if agent is in collision
 inline float rvoTimeToCollision(const RVO::Vector2& ego_position, const RVO::Vector2& vel_a_to_b, const RVO::Vector2& neighbor_position, float obstacle_radius, bool& is_in_collision) {
     RVO::Vector2 minkowski_diff = neighbor_position - ego_position;
     float sq_diam = obstacle_radius * obstacle_radius;
@@ -82,7 +83,7 @@ inline float rvoTimeToCollision(const RVO::Vector2& ego_position, const RVO::Vec
 }
 
 
-
+//Function to compute New Velocity using Reciprocal Velocity obstacles
 inline RVO::Vector2 rvoComputeNewVelocity(bool& is_collision, 
                                    rvo_agent_info_s ego_agent_info, 
                                    std::vector<rvo_agent_info_s> neighbors_list, 
@@ -98,6 +99,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(bool& is_collision,
     for(int i=0;i<NUM_VELOCITY_SAMPLES;i++)
     {
 
+        //First candidate velocity is always preferred velocity
         if(i==0) 
         {
             vel_cand = vel_pref;
