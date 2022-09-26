@@ -26,7 +26,6 @@
 #include <map>
 #include <unordered_map>
 
-
 #define NUM_VELOCITY_SAMPLES 5 //NUMBER OF SAMPLES PER EACH AGENT
 #define MAX_SPEED 1.5 // Maximum speed of agent
 #define AGENT_RADIUS 1.3 // Radius of agent
@@ -37,7 +36,14 @@
 using namespace std;
 typedef pair<string, float> AgentDistPair;
 
-float rvoTimeToCollision(const Vector2& ego_position, const Vector2& vel_a_to_b, const Vector2& neighbor_position, float obstacle_radius, bool& is_in_collision) {
+typedef struct rvo_agent_info {
+  string agent_name;
+  RVO::Vector2 currrent_velocity;
+  RVO::Vector2 preferred_velocity;
+  RVO::Vector2 current_position;
+} rvo_agent_info_s;
+
+inline float rvoTimeToCollision(const RVO::Vector2& ego_position, const RVO::Vector2& vel_a_to_b, const RVO::Vector2& neighbor_position, float obstacle_radius, bool& is_in_collision) {
     RVO::Vector2 minkowski_diff = neighbor_position - ego_position;
     float sq_diam = obstacle_radius * obstacle_radius;
     float time;
@@ -47,14 +53,14 @@ float rvoTimeToCollision(const Vector2& ego_position, const Vector2& vel_a_to_b,
     {
       if (is_in_collision) 
       {
-        time = (vel_a_to_b* minkowski_diff + sqrt(discr)) / absSq(vel_a_to_b);
+        time = (vel_a_to_b*minkowski_diff + sqrt(discr)) / absSq(vel_a_to_b);
         if (time < 0) {
           time = -INFINITY;
         }
       } 
       else 
       {
-        time = (vel_a_to_b* minkowski_diff - sqrt(discr)) / absSq(vel_a_to_b);
+        time = (vel_a_to_b*minkowski_diff - sqrt(discr)) / absSq(vel_a_to_b);
         if (time < 0) 
         {
           time = INFINITY;
@@ -77,14 +83,18 @@ float rvoTimeToCollision(const Vector2& ego_position, const Vector2& vel_a_to_b,
 
 
 
-RVO::Vector2 rvoComputeNewVelocity(bool& is_collision, std::vector<AgentDistPair> neighbors, string myName, unordered_map<string, Agent> agent_map) {
+inline RVO::Vector2 rvoComputeNewVelocity(bool& is_collision, 
+                                   rvo_agent_info_s ego_agent_info, 
+                                   std::vector<rvo_agent_info_s> neighbors_list, 
+                                   string myName) {
 
     RVO::Vector2 vel_cand;
     RVO::Vector2 vel_computed;
     float min_penalty = INFINITY;
-    RVO::Vector2 vel_pref = agent_map[myName].preferred_velocity_;
-    RVO::Vector2 pos_curr(agent_map[myName].current_pose_.transform.translation.x,agent_map[myName].current_pose_.transform.translation.y);
-    RVO::Vector2 vel_curr = agent_map[myName].current_velocity_;
+    RVO::Vector2 vel_pref = ego_agent_info.preferred_velocity;
+    RVO::Vector2 pos_curr = ego_agent_info.current_position;
+    RVO::Vector2 vel_curr = ego_agent_info.currrent_velocity;
+
     for(int i=0;i<NUM_VELOCITY_SAMPLES;i++)
     {
 
@@ -111,16 +121,16 @@ RVO::Vector2 rvoComputeNewVelocity(bool& is_collision, std::vector<AgentDistPair
             dist_to_pref_vel = abs(vel_cand - vel_pref);
         }
         float min_t_to_collision = INFINITY;
-        for(auto n: neighbors)
+        for(auto n: neighbors_list)
         {
             // If neighbor is an obstacle, agent_Radius, position and other attributes would change
             // Change code accordingly
             float t_to_collision;
             RVO::Vector2 vel_a_to_b;
-            RVO::Vector2 vel_b = agent_map[n.first].current_velocity_;
+            RVO::Vector2 vel_b = n.currrent_velocity;
             vel_a_to_b = 2*vel_cand - vel_curr - vel_b;
-            RVO::Vector2 neigh_pos(agent_map[n.first].current_pose_.transform.translation.x, agent_map[n.first].current_pose_.transform.translation.y);
-            float time = RecVelocityObs::timeToCollision(pos_curr, vel_a_to_b, neigh_pos, RADIUS_MULT_FACTOR*AGENT_RADIUS, is_collision);
+            RVO::Vector2 neigh_pos = n.current_position;
+            float time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RADIUS_MULT_FACTOR*AGENT_RADIUS, is_collision);
             if(is_collision) 
             {
                 t_to_collision = -ceil(time / TIME_STEP);

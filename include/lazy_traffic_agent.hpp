@@ -70,9 +70,9 @@ private:
     std::string name_;
 
     // velocity obstacles related
-    std::vector<AgentDistPair> neighbors_;
-
-
+    // std::vector<AgentDistPair> neighbors_;
+    std::vector<rvo_agent_info_s> neighbors_list_;
+    rvo_agent_info_s my_info;
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H
