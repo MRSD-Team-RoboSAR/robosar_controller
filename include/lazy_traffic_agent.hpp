@@ -52,7 +52,6 @@ public:
     geometry_msgs::TransformStamped current_pose_;
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
-    RVO::Vector2 computed_velocity_;
 
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);

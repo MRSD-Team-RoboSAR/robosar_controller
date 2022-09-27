@@ -34,8 +34,9 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   vel.angular.z = acos(getCurrentHeading() * velo_norm);
   vel.angular.z = std::min(fabs(vel.angular.z), w_max_);
   vel.angular.z = copysign(vel.angular.z, cross_product);
-
   pub_vel_.publish(vel);
+
+  ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo X: %f Y: %f", &name_[0], velo.x(), velo.y());
 }
 
 void Agent::updatePreferredVelocity()
@@ -66,6 +67,8 @@ void Agent::updatePreferredVelocity()
     preferred_velocity_ = norm(preferred_velocity_);
     preferred_velocity_ *= v_max_;
   }
+
+  ROS_INFO("[LT_CONTROLLER-%s]: Preferred Velo X: %f Y: %f", &name_[0], preferred_velocity_.x(), preferred_velocity_.y());
 }
 
 //! Helper founction for computing eucledian distances in the x-y plane.
@@ -149,11 +152,11 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
   computeNearestNeighbors(agent_map);
 
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
-  rvo_agent_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position};
-  bool is_collision = false;
+  // Create new self structure for RVO
+  rvo_agent_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position, v_max_};
   
   // Calculate new velocity
-  preferred_velocity_ = rvoComputeNewVelocity(is_collision, my_info, neighbors_list_, name_);
+  current_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
 
   // Handle the calculated velocity
 }
@@ -165,8 +168,7 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
   neighbors_list_.clear();
 
   // Crop agents based on distance
-  for (const auto &agent : agent_map)
-  {
+  for (const auto &agent : agent_map) {
 
     RVO::Vector2 neigh_agent_pos(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
     string neighbour_agent_name = agent.first;
@@ -177,18 +179,19 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
   }
 
   // Crop agents based on max neighbours
-  for (int i = 0; i < MAX_NEIGHBORS; i++)
-  {
+  for (int i = 0; i < MAX_NEIGHBORS && !all_neighbors.empty(); i++) {
 
-    if (all_neighbors.empty())
-      break;
+    // Get the nearest neighbor from the priority queue
     AgentDistPair agent_dist_pair = all_neighbors.top();
     all_neighbors.pop();
+
+    // Create and add the nearest neighbor to the list of neighbors
     rvo_agent_info_s neigh;
     neigh.agent_name = agent_dist_pair.first;
     neigh.current_position = my_pose;
     neigh.currrent_velocity = agent_map[neigh.agent_name].current_velocity_;
     neigh.preferred_velocity = agent_map[neigh.agent_name].preferred_velocity_;
+    neigh.max_vel = agent_map[neigh.agent_name].v_max_;
     neighbors_list_.push_back(neigh);
   }
 }
