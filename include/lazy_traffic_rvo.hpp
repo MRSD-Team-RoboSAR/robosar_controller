@@ -27,44 +27,40 @@ typedef struct rvo_agent_info {
   double max_vel;
 } rvo_agent_info_s;
 
+
+inline float sqr(float a) {
+    return a*a;
+}
+
 //Function to compute if agent is in collision
-inline float rvoTimeToCollision(const RVO::Vector2& ego_position, const RVO::Vector2& vel_a_to_b, const RVO::Vector2& neighbor_position, float obstacle_radius, bool& is_in_collision) {
-    RVO::Vector2 minkowski_diff = neighbor_position - ego_position;
-    float sq_diam = obstacle_radius * obstacle_radius;
+  inline float rvoTimeToCollision(const RVO::Vector2& p, const RVO::Vector2& v,
+                         const RVO::Vector2& p2, float radius, bool collision) {
+    RVO::Vector2 ba = p2 - p;
+    float sq_diam = radius * radius;
     float time;
 
-    float discr = -sqrt(det(vel_a_to_b, minkowski_diff)) + sq_diam * absSq(vel_a_to_b);
-    if (discr > 0) 
-    {
-      if (is_in_collision) 
-      {
-        time = (vel_a_to_b*minkowski_diff + sqrt(discr)) / absSq(vel_a_to_b);
+    float discr = -sqr(det(v, ba)) + sq_diam * absSq(v);
+    if (discr > 0) {
+      if (collision) {
+        time = (v * ba + std::sqrt(discr)) / absSq(v);
         if (time < 0) {
           time = -RVO_INFTY;
         }
-      } 
-      else 
-      {
-        time = (vel_a_to_b*minkowski_diff - sqrt(discr)) / absSq(vel_a_to_b);
-        if (time < 0) 
-        {
+      } else {
+        time = (v * ba - std::sqrt(discr)) / absSq(v);
+        if (time < 0) {
           time = RVO_INFTY;
         }
       }
-    } 
-    else 
-    {
-      if (is_in_collision) 
-      {
+    } else {
+      if (collision) {
         time = -RVO_INFTY;
-      } 
-      else 
-      {
+      } else {
         time = RVO_INFTY;
       }
-    } 
+    }
     return time;
-}
+  }
 
 
 //Function to compute New Velocity using Reciprocal Velocity obstacles
@@ -76,15 +72,15 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info,
     RVO::Vector2 vel_cand;
     RVO::Vector2 vel_computed;
     float min_penalty = RVO_INFTY;
-    RVO::Vector2 vel_pref = ego_agent_info.preferred_velocity;
-    RVO::Vector2 pos_curr = ego_agent_info.current_position;
-    RVO::Vector2 vel_curr = ego_agent_info.currrent_velocity;
+    const RVO::Vector2 vel_pref = ego_agent_info.preferred_velocity;
+    const RVO::Vector2 pos_curr = ego_agent_info.current_position;
+    const RVO::Vector2 vel_curr = ego_agent_info.currrent_velocity;
 
     // TODO figure out later
-    bool is_collision = false;
+    const bool is_collision = false;
 
     // Main loop
-    for(int i=0;i<RVO_VELOCITY_SAMPLES;i++) {
+    for(int i=0;i<RVO_VELOCITY_SAMPLES;++i) {
 
         //First candidate velocity is always preferred velocity
         if(i==0) {
@@ -93,17 +89,15 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info,
             do 
             {
               vel_cand = RVO::Vector2(2.0f*rand() - RAND_MAX, 2.0f*rand() - RAND_MAX);
-            } while(absSq(vel_cand) > sqrt((float) RAND_MAX));
+            } while(absSq(vel_cand) > sqr((float) RAND_MAX));
             vel_cand *= (ego_agent_info.max_vel / RAND_MAX);
         }
 
         float dist_to_pref_vel ; // distance between candidate velocity and preferred velocity
-        if(is_collision)
-        {
+        if(is_collision) {
             dist_to_pref_vel = 0;
         }
-        else
-        {
+        else {
             dist_to_pref_vel = abs(vel_cand - vel_pref);
         }
 
