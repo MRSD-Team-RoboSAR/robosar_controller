@@ -22,6 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
   robosar_messages
 )
 
+find_package(GTest REQUIRED)
+
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
 
@@ -126,6 +128,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${GTEST_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -218,7 +221,8 @@ install(DIRECTORY include
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_robosar_pure_pursuit.cpp)
+catkin_add_gtest(simple_test test/simple_test.cpp)
+target_link_libraries(simple_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
