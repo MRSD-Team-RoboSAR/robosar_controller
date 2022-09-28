@@ -47,6 +47,32 @@ TEST(SimpleNoCollision, SimpleNoCollision){
     ASSERT_FLOAT_EQ(RVO_INFTY, time);
 }
 
+TEST(ObliqueCollision, ObliqueCollision){
+    
+    //ASSERT_EQ(3, add(1,2));
+
+    // Define local variables
+    RVO::Vector2 ray_start(0.0, 0.0);
+    RVO::Vector2 ray_velo(1.0,0.2);
+    RVO::Vector2 disc_centre(5.0, 0.0);
+    float disc_radius = 1.0;
+    bool collision = false;
+
+
+    // Compute time to collision
+    float time = rvoTimeToCollision(ray_start, ray_velo, disc_centre, disc_radius, collision);
+    ASSERT_NE(RVO_INFTY, time);
+    std::cout<<"Time to collision is "<<time<<std::endl;
+
+    // Compute time to collision
+    disc_radius = 3.0;
+    ray_start = RVO::Vector2(0.0, 2.0);
+    ray_velo = RVO::Vector2(1.0,0.0);
+    time = rvoTimeToCollision(ray_start, ray_velo, disc_centre, disc_radius, collision);
+    ASSERT_NE(RVO_INFTY, time);
+    std::cout<<"Time to collision is "<<time<<std::endl;
+}
+
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
