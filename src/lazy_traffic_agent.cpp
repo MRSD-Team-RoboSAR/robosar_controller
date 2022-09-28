@@ -66,9 +66,9 @@ void Agent::updatePreferredVelocity()
                                        lookahead_.transform.translation.y - current_pose_.transform.translation.y);
     preferred_velocity_ = norm(preferred_velocity_);
     preferred_velocity_ *= v_max_;
+    ROS_INFO("[LT_CONTROLLER-%s]: Preferred Velo X: %f Y: %f", &name_[0], preferred_velocity_.x(), preferred_velocity_.y());
   }
 
-  ROS_INFO("[LT_CONTROLLER-%s]: Preferred Velo X: %f Y: %f", &name_[0], preferred_velocity_.x(), preferred_velocity_.y());
 }
 
 //! Helper founction for computing eucledian distances in the x-y plane.
@@ -147,6 +147,13 @@ RVO::Vector2 Agent::getCurrentHeading()
 
 void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
 {
+  // Dont invoke RVO if the preferred velocity is zero
+  // and current velocity is zero
+  if (preferred_velocity_.x() == 0.0 && preferred_velocity_.y() == 0.0 &&
+      current_velocity_.x() == 0.0 && current_velocity_.y() == 0.0)
+  {
+    return;
+  }
 
   // Calculate neighbours
   computeNearestNeighbors(agent_map);
@@ -155,8 +162,11 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
   // Create new self structure for RVO
   rvo_agent_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position, v_max_};
   
+  // Print number of neighbours
+  ROS_INFO("[LT_CONTROLLER-%s]: Neighbours: %ld", &name_[0], neighbors_list_.size());
+
   // Calculate new velocity
-  current_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
+  rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
 
   // Handle the calculated velocity
 }
@@ -169,6 +179,10 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
 
   // Crop agents based on distance
   for (const auto &agent : agent_map) {
+    
+    // Ignore self
+    if(agent.first == name_)
+      continue;
 
     RVO::Vector2 neigh_agent_pos(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
     string neighbour_agent_name = agent.first;
@@ -188,7 +202,9 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     // Create and add the nearest neighbor to the list of neighbors
     rvo_agent_info_s neigh;
     neigh.agent_name = agent_dist_pair.first;
-    neigh.current_position = my_pose;
+    RVO::Vector2 neigh_agent_pos(agent_map[neigh.agent_name].current_pose_.transform.translation.x, 
+                                  agent_map[neigh.agent_name].current_pose_.transform.translation.y);
+    neigh.current_position = neigh_agent_pos;
     neigh.currrent_velocity = agent_map[neigh.agent_name].current_velocity_;
     neigh.preferred_velocity = agent_map[neigh.agent_name].preferred_velocity_;
     neigh.max_vel = agent_map[neigh.agent_name].v_max_;
