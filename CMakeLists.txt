@@ -148,6 +148,7 @@ add_library(${PROJECT_NAME}
 add_executable(${PROJECT_NAME}_node src/robosar_controller_node.cpp)
 add_executable(robosar_controller_client src/robosar_controller_client.cpp)
 add_executable(robosar_traffic_controller_node src/traffic_controller_node.cpp)
+add_executable(ltc_head_on_collision_test src/ltc_head_on_collision_test.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -171,6 +172,11 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_link_libraries(robosar_traffic_controller_node
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+)
+
+target_link_libraries(ltc_head_on_collision_test
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}
 )
