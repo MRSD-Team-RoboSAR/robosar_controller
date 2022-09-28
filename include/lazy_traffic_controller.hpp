@@ -37,7 +37,7 @@ private:
     void computeVelocities(const ros::TimerEvent&);
     bool controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
                                    robosar_messages::robosar_controller::Response &res);
-    void updateAgentPoses();
+    void updateAgentPoses(void);
 
     // miscellanous
     std::thread traffic_controller_thread_;
@@ -45,6 +45,7 @@ private:
     bool fleet_status_outdated_;
     std::string map_frame_id_;
     double controller_period_s;
+    double velocity_calc_period_s;
     std::mutex map_mutex;
 
     // controller data structures

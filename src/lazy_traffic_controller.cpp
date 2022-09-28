@@ -5,7 +5,7 @@
 
 
 LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
-                                                controller_period_s(0.1), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
+                                            velocity_calc_period_s(0.5), controller_period_s(0.1), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
     // Get latest fleet info from agent bringup
@@ -100,19 +100,30 @@ void LazyTrafficController::RunController() {
 void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
     
     std::lock_guard<std::mutex> lock(map_mutex);
-    // Update current poses of all agents from tf
-    updateAgentPoses();
+    static int iter = 0;
+    if(iter == (int)(velocity_calc_period_s/controller_period_s)) {
+        // Update current poses of all agents from tf
+        updateAgentPoses();
+        iter = 0;
 
-    // Calculate preferred velocities for all agents
-    for(auto &agent : agent_map_) {
-        agent.second.updatePreferredVelocity();
-        agent.second.invokeRVO(agent_map_);
+        // Calculate preferred velocities for all agents
+        for(auto &agent : agent_map_) {
+            agent.second.updatePreferredVelocity();
+            agent.second.invokeRVO(agent_map_);
 
-        //agent.second.sendVelocity(agent.second.current_velocity_);
-        // Inform other subsystems of the controller status
-        agent.second.publishStatus();
+            agent.second.sendVelocity(agent.second.rvo_velocity_);
+            // Inform other subsystems of the controller status
+            agent.second.publishStatus();
+        }
+
     }
+    else {
+        iter++;
+         for(auto &agent : agent_map_) {
 
+            agent.second.sendVelocity(agent.second.rvo_velocity_);
+        }
+    }
 
 }
 
@@ -131,8 +142,23 @@ void LazyTrafficController::updateAgentPoses() {
             //ros::Duration(1.0).sleep();
             continue;
         }
+        // Calculate current velocity
+        // Change in x
+        double dx = current_pose.transform.translation.x - it->second.current_pose_.transform.translation.x;
+        // Change in y
+        double dy = current_pose.transform.translation.y - it->second.current_pose_.transform.translation.y;
+        double dt = velocity_calc_period_s;
+        assert(!AreSame(dt,0.0));
+        // Calculate current velocity
+        it->second.current_velocity_ = RVO::Vector2(dx/dt, dy/dt);
+
         // Update current pose
         it->second.current_pose_ = current_pose;
+        // ROS_INFO(" [LT_CONTROLLER] Updated pose of %s %f %f", it->first.c_str(), 
+        //                     agent_map_[it->first.c_str()].current_pose_.transform.translation.x, 
+        //                     agent_map_[it->first.c_str()].current_pose_.transform.translation.y);
+        // ROS_INFO(" [LT_CONTROLLER] Updated velocity of %s %f %f", it->first.c_str(), 
+        //                         it->second.current_velocity_.x(), it->second.current_velocity_.y());
     }
 }
 

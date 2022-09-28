@@ -2,6 +2,9 @@
 
 #include "lazy_traffic_agent.hpp"
 
+#define PI 3.14159265
+#define CONTROL_ANGLE_THRESHOLD PI/2.0
+
 void Agent::stopAgent(void)
 {
   // TODO Check if velocity is non zero
@@ -15,15 +18,15 @@ void Agent::sendVelocity(RVO::Vector2 velo)
 {
 
   // Check if velocity is non zero
-  if (velo.x() == 0.0 && velo.y() == 0.0)
-  {
+  if (AreSame(velo.x(), 0.0) && AreSame(velo.y(), 0.0)) {
     return;
   }
   // Update status because sending non zero velocity
   status.data = status.BUSY;
 
+  // TODO Put limits on acceleration
+
   geometry_msgs::Twist vel;
-  vel.linear.x = v_max_;
 
   // Get heading diff with a dot product
   RVO::Vector2 heading = getCurrentHeading();
@@ -34,9 +37,12 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   vel.angular.z = acos(getCurrentHeading() * velo_norm);
   vel.angular.z = std::min(fabs(vel.angular.z), w_max_);
   vel.angular.z = copysign(vel.angular.z, cross_product);
+  
+  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : v_max_;
+  //vel.linear.x = v_max_;
   pub_vel_.publish(vel);
 
-  ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo X: %f Y: %f", &name_[0], velo.x(), velo.y());
+  //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo X: %f Y: %f", &name_[0], velo.x(), velo.y());
 }
 
 void Agent::updatePreferredVelocity()
@@ -148,10 +154,10 @@ RVO::Vector2 Agent::getCurrentHeading()
 void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
 {
   // Dont invoke RVO if the preferred velocity is zero
-  // and current velocity is zero
-  if (preferred_velocity_.x() == 0.0 && preferred_velocity_.y() == 0.0 &&
-      current_velocity_.x() == 0.0 && current_velocity_.y() == 0.0)
-  {
+  // or if there is no path to follow
+  if ((AreSame(preferred_velocity_.x(), 0.0) && AreSame(preferred_velocity_.y(), 0.0)) ||
+       current_path_.empty()) {
+    rvo_velocity_ = RVO::Vector2(0.0, 0.0);
     return;
   }
 
@@ -162,13 +168,13 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
   // Create new self structure for RVO
   rvo_agent_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position, v_max_};
   
-  // Print number of neighbours
-  ROS_INFO("[LT_CONTROLLER-%s]: Neighbours: %ld", &name_[0], neighbors_list_.size());
+  //ROS_INFO("[LT_CONTROLLER-%s]: Neighbours: %ld", &name_[0], neighbors_list_.size());
 
   // Calculate new velocity
   rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
 
   // Handle the calculated velocity
+  ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
 
 void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
