@@ -100,8 +100,13 @@ void LazyTrafficController::RunController() {
 void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
     
     std::lock_guard<std::mutex> lock(map_mutex);
+
     static int iter = 0;
     if(iter == (int)(velocity_calc_period_s/controller_period_s)) {
+
+        // Measure execution time of function
+        auto start = std::chrono::high_resolution_clock::now();
+
         // Update current poses of all agents from tf
         updateAgentPoses();
         iter = 0;
@@ -116,6 +121,9 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
             agent.second.publishStatus();
         }
 
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        //ROS_INFO(" [LT_CONTROLLER] Time taken to compute velocities: %f s", elapsed.count());
     }
     else {
         iter++;

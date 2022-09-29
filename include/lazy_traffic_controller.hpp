@@ -20,6 +20,12 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
 
+/***
+ * TODO :
+ * Measured velocity for one iteration
+ * Find out what else does RVO contain
+ * 
+ * */
 class LazyTrafficController {
 
 public:
