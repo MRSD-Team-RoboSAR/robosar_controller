@@ -5,7 +5,7 @@
 
 
 LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
-                                            velocity_calc_period_s(0.5), controller_period_s(0.1), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
+                                            velocity_calc_period_s(0.2), controller_period_s(0.2), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
     // Get latest fleet info from agent bringup

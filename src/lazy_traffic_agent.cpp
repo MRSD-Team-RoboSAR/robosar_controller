@@ -35,10 +35,11 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   double cross_product = heading.x() * velo_norm.y() - heading.y() * velo_norm.x();
   // Calculate dot product
   vel.angular.z = acos(getCurrentHeading() * velo_norm);
+
+  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : v_max_;
   vel.angular.z = std::min(fabs(vel.angular.z), w_max_);
   vel.angular.z = copysign(vel.angular.z, cross_product);
   
-  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : v_max_;
   //vel.linear.x = v_max_;
   pub_vel_.publish(vel);
 
