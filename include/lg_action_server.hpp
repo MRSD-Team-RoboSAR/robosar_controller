@@ -19,7 +19,6 @@
 #include <geometry_msgs/Vector3Stamped.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
-#include <ackermann_msgs/AckermannDriveStamped.h>
 
 #include <kdl/frames.hpp>
 #include <robosar_controller/PurePursuitConfig.h>
@@ -96,8 +95,8 @@ public:
     receivePath(goal->path);
     controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LGControllerAction::computeVelocities, this, _1));
     pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/"+action_name_+"/cmd_vel", 1);
-    while(!goal_reached_)
-    {
+    while(!goal_reached_) {
+      
       if (as_.isPreemptRequested() || !ros::ok())
       {
         ROS_INFO("%s: Preempted", action_name_.c_str());
@@ -121,6 +120,7 @@ public:
 
   ~LGControllerAction(void)
   {
+    
   }
   void receivePath(nav_msgs::Path new_path)
   {

@@ -19,7 +19,10 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   tf2
   tf2_ros
+  robosar_messages
 )
+
+find_package(GTest REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 find_package(orocos_kdl REQUIRED)
@@ -125,12 +128,14 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${GTEST_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/robosar_pure_pursuit.cpp
-# )
+add_library(${PROJECT_NAME}
+   src/lazy_traffic_controller.cpp
+   src/lazy_traffic_agent.cpp
+ )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -142,6 +147,8 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/robosar_controller_node.cpp)
 add_executable(robosar_controller_client src/robosar_controller_client.cpp)
+add_executable(robosar_traffic_controller_node src/traffic_controller_node.cpp)
+add_executable(ltc_head_on_collision_test src/ltc_head_on_collision_test.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -158,6 +165,20 @@ target_link_libraries(${PROJECT_NAME}_node
 )
 target_link_libraries(robosar_controller_client
   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(robosar_traffic_controller_node
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
+)
+
+target_link_libraries(ltc_head_on_collision_test
+  ${catkin_LIBRARIES}
+  ${PROJECT_NAME}
 )
 #############
 ## Install ##
@@ -206,7 +227,15 @@ install(DIRECTORY include
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_robosar_pure_pursuit.cpp)
+catkin_add_gtest(simple_test test/simple_test.cpp)
+catkin_add_gtest(time_to_collision_test test/time_to_collision_test.cpp)
+catkin_add_gtest(rvo_compute_velocity_test test/rvo_compute_velocity_test.cpp)
+
+target_link_libraries(simple_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
+target_link_libraries(time_to_collision_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
+target_link_libraries(rvo_compute_velocity_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
+
+
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
