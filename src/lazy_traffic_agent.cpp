@@ -2,8 +2,8 @@
 
 #include "lazy_traffic_agent.hpp"
 
-#define PI 3.14159265
-#define CONTROL_ANGLE_THRESHOLD PI/2.0
+#define PI (3.14159265)
+#define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 
 void Agent::stopAgent(void)
 {

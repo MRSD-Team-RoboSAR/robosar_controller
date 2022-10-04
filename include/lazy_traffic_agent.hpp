@@ -21,8 +21,8 @@ typedef pair<string, float> AgentDistPair;
 
 using namespace std;
 
-#define MAX_NEIGHBORS 4 // Maximum number of neighbors to consider
-#define MAX_NEIGH_DISTANCE 2.00 //Max distance among neighbors
+#define MAX_NEIGHBORS (4) // Maximum number of neighbors to consider
+#define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
 class Agent {
 
 public:
