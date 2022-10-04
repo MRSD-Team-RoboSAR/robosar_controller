@@ -36,14 +36,16 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   // Calculate dot product
   vel.angular.z = acos(getCurrentHeading() * velo_norm);
 
-  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : v_max_;
+  // Map linear velocity based on error in angular velocity
+  vel.linear.x = 0.0 + v_max_ * (1.0 - fabs(vel.angular.z) / CONTROL_ANGLE_THRESHOLD);
+  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : vel.linear.x;
   vel.angular.z = std::min(fabs(vel.angular.z), w_max_);
   vel.angular.z = copysign(vel.angular.z, cross_product);
   
   //vel.linear.x = v_max_;
   pub_vel_.publish(vel);
 
-  //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo X: %f Y: %f", &name_[0], velo.x(), velo.y());
+  //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
 
 void Agent::updatePreferredVelocity()
