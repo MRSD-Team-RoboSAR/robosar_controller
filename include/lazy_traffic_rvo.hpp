@@ -11,17 +11,16 @@
 #include <ros/console.h>
 
 #define RVO_VELOCITY_SAMPLES (1000) //NUMBER OF SAMPLES PER EACH AGENT
-#define RVO_AGENT_RADIUS (0.15) // Radius of agent
+#define RVO_AGENT_RADIUS (0.20) // Radius of agent
 #define RVO_RADIUS_MULT_FACTOR (2) // since r1 + r2 = 2*r for RoboSAR, Define agent_radius and mult_factor for obstacle cone
 #define TIME_STEP (1) //frequence at which controller runs ( 1/ timestep)
 #define RVO_SAFETY_FACTOR (20.0f) //The safety factor of the agent (weight for penalizing candidate velocities - the higher the safety factor, the less 'aggressive' an agent is)
 #define RVO_INFTY (9e9f)
 
-using namespace std;
-typedef pair<string, float> AgentDistPair;
+typedef std::pair<std::string, float> AgentDistPair;
 
 typedef struct rvo_agent_info {
-  string agent_name;
+  std::string agent_name;
   RVO::Vector2 currrent_velocity;
   RVO::Vector2 preferred_velocity;
   RVO::Vector2 current_position;
@@ -117,7 +116,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info,
         float min_t_to_collision = RVO_INFTY;
         
         // iterate over neighbors
-        for(auto n: neighbors_list) {
+        for(const auto& n: neighbors_list) {
 
             // if(i==0) {
             //     ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
