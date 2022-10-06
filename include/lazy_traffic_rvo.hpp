@@ -38,36 +38,36 @@ inline bool AreSame(double a, double b)
 }
 
 //Function to compute if agent is in collision
-  inline float rvoTimeToCollision(const RVO::Vector2& p, const RVO::Vector2& v,
-                         const RVO::Vector2& p2, float radius, bool collision) {
+inline float rvoTimeToCollision(const RVO::Vector2& p, const RVO::Vector2& v,
+                        const RVO::Vector2& p2, float radius, bool collision) {
 
-    //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
-    RVO::Vector2 ba = p2 - p;
-    float sq_diam = sqr(radius);
-    float time;
+  //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
+  RVO::Vector2 ba = p2 - p;
+  float sq_diam = sqr(radius);
+  float time;
 
-    float discr = -sqr(det(v, ba)) + sq_diam * absSq(v);
-    if (discr > 0) {
-      if (collision) {
-        time = (v * ba + std::sqrt(discr)) / absSq(v);
-        if (time < 0) {
-          time = -RVO_INFTY;
-        }
-      } else {
-        time = (v * ba - std::sqrt(discr)) / absSq(v);
-        if (time < 0) {
-          time = RVO_INFTY;
-        }
+  float discr = -sqr(det(v, ba)) + sq_diam * absSq(v);
+  if (discr > 0) {
+    if (collision) {
+      time = (v * ba + std::sqrt(discr)) / absSq(v);
+      if (time < 0) {
+        time = -RVO_INFTY;
       }
     } else {
-      if (collision) {
-        time = -RVO_INFTY;
-      } else {
+      time = (v * ba - std::sqrt(discr)) / absSq(v);
+      if (time < 0) {
         time = RVO_INFTY;
       }
     }
-    return time;
+  } else {
+    if (collision) {
+      time = -RVO_INFTY;
+    } else {
+      time = RVO_INFTY;
+    }
   }
+  return time;
+}
 
 
 //Function to compute New Velocity using Reciprocal Velocity obstacles

@@ -14,6 +14,14 @@ void Agent::stopAgent(void)
   pub_vel_.publish(vel);
 }
 
+
+// Write a function to clear the paths 
+
+void Agent::clearPath(void){
+  
+  std::queue<geometry_msgs::PoseStamped>().swap(current_path_);
+
+}
 void Agent::sendVelocity(RVO::Vector2 velo)
 {
 

@@ -43,7 +43,7 @@ public:
     }
     void sendVelocity(RVO::Vector2 vel);
     void stopAgent(void);
-    
+    void clearPath(void);
     void updatePreferredVelocity(void);
     // Function to call reciprocal Velocity Obstacles
     void invokeRVO(std::unordered_map<std::string, Agent> agent_map);
