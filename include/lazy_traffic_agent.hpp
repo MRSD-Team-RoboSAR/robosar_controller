@@ -14,6 +14,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include "robosar_messages/controller_status.h"
+#include <visualization_msgs/Marker.h>
 
 #include "Vector2.h"
 #include "lazy_traffic_rvo.hpp"
@@ -34,7 +35,20 @@ public:
         // Initialise publisher
         pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + name + "/cmd_vel", 1);
         pub_status_ = nh_.advertise<robosar_messages::controller_status>("/lazy_traffic_controller/" + name + "/status", 1);
+        vel_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/lazy_traffic_controller/" + name + "/vel_marker", 1);
         status.data = status.IDLE;
+
+        // Initialise the marker message
+        vel_marker_.header.frame_id = "map";
+        vel_marker_.ns = "vel_marker";
+        vel_marker_.id = 0;
+        vel_marker_.type = visualization_msgs::Marker::ARROW;
+        vel_marker_.action = visualization_msgs::Marker::ADD;
+        vel_marker_.scale.x = 1;
+        vel_marker_.scale.y = 0.1;
+        vel_marker_.scale.z = 0.1;
+        vel_marker_.color.a = 1.0; // Don't forget to set the alpha!
+
     }
     ~Agent() {}
 
@@ -62,12 +76,15 @@ private:
     //Function to compute Nearest Neighbors of an agent using euclidian distance
     void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     RVO::Vector2 getCurrentHeading();
+    void publishPreferredVelocityMarker(void);
     
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;
+    ros::Publisher vel_marker_pub_;
     ros::NodeHandle nh_;
     geometry_msgs::TransformStamped lookahead_;
     robosar_messages::controller_status status;
+    visualization_msgs::Marker vel_marker_;
 
     double v_max_;
     double w_max_;

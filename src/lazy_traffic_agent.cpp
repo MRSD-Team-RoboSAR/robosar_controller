@@ -220,3 +220,21 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     neighbors_list_.push_back(neigh);
   }
 }
+
+void Agent::publishPreferredVelocityMarker(void) {
+
+  // update marker and publish it on ROS
+  vel_marker_.header.stamp = ros::Time();
+  vel_marker_.id = vel_marker_.id + 1;
+  vel_marker_.pose.position.x = current_pose_.transform.translation.x;
+  vel_marker_.pose.position.y = current_pose_.transform.translation.y;
+  vel_marker_.pose.position.z = 0.0;
+  vel_marker_.pose.orientation = current_pose_.transform.rotation;
+
+  vel_marker_.color.r = 0.0;
+  vel_marker_.color.g = 1.0;
+  vel_marker_.color.b = 0.0;
+
+  // Publish the marker
+  vel_marker_pub_.publish(vel_marker_);
+}
