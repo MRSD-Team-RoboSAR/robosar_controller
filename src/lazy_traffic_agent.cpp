@@ -229,7 +229,17 @@ void Agent::publishPreferredVelocityMarker(void) {
   vel_marker_.pose.position.x = current_pose_.transform.translation.x;
   vel_marker_.pose.position.y = current_pose_.transform.translation.y;
   vel_marker_.pose.position.z = 0.0;
-  vel_marker_.pose.orientation = current_pose_.transform.rotation;
+
+  // Set the orientation from preferred velocity direction
+  double yaw = atan2(preferred_velocity_.y(), preferred_velocity_.x());
+  tf2::Matrix3x3 rot;
+  rot.setEulerYPR(yaw,0.0,0.0);
+  tf2::Quaternion quat;
+  rot.getRotation(quat);
+  vel_marker_.pose.orientation.x = quat.x();
+  vel_marker_.pose.orientation.y = quat.y();
+  vel_marker_.pose.orientation.z = quat.z();
+  vel_marker_.pose.orientation.w = quat.w();
 
   vel_marker_.color.r = 0.0;
   vel_marker_.color.g = 1.0;
