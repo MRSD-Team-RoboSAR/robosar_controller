@@ -44,10 +44,11 @@ public:
         vel_marker_.id = 0;
         vel_marker_.type = visualization_msgs::Marker::ARROW;
         vel_marker_.action = visualization_msgs::Marker::ADD;
-        vel_marker_.scale.x = 1;
-        vel_marker_.scale.y = 0.1;
-        vel_marker_.scale.z = 0.1;
+        vel_marker_.scale.x = 0.5;
+        vel_marker_.scale.y = 0.05;
+        vel_marker_.scale.z = 0.05;
         vel_marker_.color.a = 1.0; // Don't forget to set the alpha!
+        vel_marker_.lifetime = ros::Duration(1.0);
 
     }
     ~Agent() {}
@@ -77,6 +78,7 @@ private:
     void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
+    void publishVOVelocityMarker(void);
     
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;
