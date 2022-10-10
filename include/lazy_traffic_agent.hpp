@@ -13,7 +13,7 @@
 #include <ros/ros.h>
 #include <tf/tf.h>
 #include "robosar_messages/controller_status.h"
-
+#include <nav_msgs/OccupancyGrid.h>
 #include "Vector2.h"
 #include "lazy_traffic_rvo.hpp"
 
@@ -23,6 +23,8 @@ using namespace std;
 
 #define MAX_NEIGHBORS 4 // Maximum number of neighbors to consider
 #define MAX_NEIGH_DISTANCE 2.00 //Max distance among neighbors
+#define COLLISION_THRESH 50 // Collision threshold
+#define USE_STATIC_OBSTACLE_AVOIDANCE 1
 class Agent {
 
 public:
@@ -45,7 +47,7 @@ public:
     
     void updatePreferredVelocity(void);
     // Function to call reciprocal Velocity Obstacles
-    void invokeRVO(std::unordered_map<std::string, Agent> agent_map);
+    void invokeRVO(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map);
 
     std::string robot_frame_id_;
     //Velocity Obstacle related members
@@ -60,8 +62,16 @@ private:
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
     void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
+    void computeStaticObstacles(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map);
+    void breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, const int& map_width, const int& map_height, const double& map_resolution,const geometry_msgs::Point& map_origin);
     RVO::Vector2 getCurrentHeading();
-    
+    unsigned int size_width;
+    unsigned int size_height;
+    double origin_x;
+    double origin_y;
+    double resolution;
+    std::string map_frame_;  /// @brief frame that map is located in
+    unsigned char* costmap_;
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;
     ros::NodeHandle nh_;
@@ -75,8 +85,10 @@ private:
     std::string name_;
 
     // Velocity obstacles related members
-    std::vector<rvo_agent_info_s> neighbors_list_;
-    rvo_agent_info_s my_info;
+    std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
+    rvo_agent_obstacle_info_s my_info;
+    std::vector<int8_t> map_data;
+    int dir[8][2] = {{-1 , -1}, {-1 , 0}, {-1 , 1}, {0 , -1}, {0 , 1}, {1 , -1}, {1 , 0}, {1 , 1}};
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H

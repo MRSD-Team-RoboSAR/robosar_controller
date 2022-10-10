@@ -20,13 +20,13 @@
 using namespace std;
 typedef pair<string, float> AgentDistPair;
 
-typedef struct rvo_agent_info {
+typedef struct rvo_agent_obstacle_info {
   string agent_name;
   RVO::Vector2 currrent_velocity;
   RVO::Vector2 preferred_velocity;
   RVO::Vector2 current_position;
   double max_vel;
-} rvo_agent_info_s;
+} rvo_agent_obstacle_info_s;
 
 
 inline float sqr(float a) {
@@ -72,8 +72,8 @@ inline bool AreSame(double a, double b)
 
 
 //Function to compute New Velocity using Reciprocal Velocity obstacles
-inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info, 
-                                   const std::vector<rvo_agent_info_s> neighbors_list) {
+inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_info, 
+                                   const std::vector<rvo_agent_obstacle_info_s> neighbors_list) {
     
     //ROS_INFO(" ");
     //ROS_INFO(" ");

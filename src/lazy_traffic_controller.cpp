@@ -8,6 +8,9 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
                                             velocity_calc_period_s(0.2), controller_period_s(0.2), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
+
+    // subscribe to occupancy grid map
+    occupancy_grid_subscriber_ = nh_.subscribe("/map", 1, &LazyTrafficController::occupancyGridCallback, this);
     // Get latest fleet info from agent bringup
     status_client = nh_.serviceClient<robosar_messages::agent_status>("/robosar_agent_bringup_node/agent_status");
     // Get active agents from agent bringup
@@ -31,6 +34,13 @@ LazyTrafficController::~LazyTrafficController() {
 
     controller_active_ = false;
     traffic_controller_thread_.join();
+}
+
+// subscribe to occupancy grid map and update the map
+void LazyTrafficController::occupancyGridCallback(const nav_msgs::OccupancyGrid &occupancy_grid_msg) {
+    map_mutex.lock();
+    occupancy_grid_map = occupancy_grid_msg;
+    map_mutex.unlock();
 }
 
 void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
@@ -114,7 +124,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
         // Calculate preferred velocities for all agents
         for(auto &agent : agent_map_) {
             agent.second.updatePreferredVelocity();
-            agent.second.invokeRVO(agent_map_);
+            agent.second.invokeRVO(agent_map_, occupancy_grid_map);
 
             agent.second.sendVelocity(agent.second.rvo_velocity_);
             // Inform other subsystems of the controller status
