@@ -11,13 +11,14 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <ros/ros.h>
-#include <tf/tf.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 #include "robosar_messages/controller_status.h"
 #include <nav_msgs/OccupancyGrid.h>
 #include "Vector2.h"
 #include "lazy_traffic_rvo.hpp"
 
-typedef pair<string, float> AgentDistPair;
+typedef std::pair<std::string, float> AgentDistPair;
 
 using namespace std;
 
@@ -30,7 +31,7 @@ class Agent {
 public:
     Agent() : name_(""), robot_frame_id_(""), current_path_(), current_pose_() {}
     Agent(std::string name, ros::NodeHandle nh) : name_(name), robot_frame_id_(name + "/base_link"), nh_(nh),
-                                                  ld_(0.4), v_max_(0.2), goal_threshold(0.2), w_max_(1.0),
+                                                  ld_(0.4), v_max_(0.2), goal_threshold_(0.2), w_max_(0.5),
                                                   preferred_velocity_(RVO::Vector2(0.0, 0.0)), current_velocity_(RVO::Vector2(0.0, 0.0)) {
         // Initialise publisher
         pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + name + "/cmd_vel", 1);
@@ -44,7 +45,7 @@ public:
     }
     void sendVelocity(RVO::Vector2 vel);
     void stopAgent(void);
-    
+    void clearPath(void);
     void updatePreferredVelocity(void);
     // Function to call reciprocal Velocity Obstacles
     void invokeRVO(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map);
@@ -80,8 +81,8 @@ private:
 
     double v_max_;
     double w_max_;
-    double ld_;
-    double goal_threshold;
+    double ld_; // Lookahead distance
+    double goal_threshold_;
     std::string name_;
 
     // Velocity obstacles related members

@@ -2,8 +2,8 @@
 
 #include "lazy_traffic_agent.hpp"
 
-#define PI 3.14159265
-#define CONTROL_ANGLE_THRESHOLD PI/2.0
+#define PI (3.14159265)
+#define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 
 void Agent::stopAgent(void)
 {
@@ -14,6 +14,14 @@ void Agent::stopAgent(void)
   pub_vel_.publish(vel);
 }
 
+
+// Write a function to clear the paths 
+
+void Agent::clearPath(void){
+  
+  std::queue<geometry_msgs::PoseStamped>().swap(current_path_);
+
+}
 void Agent::sendVelocity(RVO::Vector2 velo)
 {
 
@@ -36,14 +44,16 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   // Calculate dot product
   vel.angular.z = acos(getCurrentHeading() * velo_norm);
 
-  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : v_max_;
+  // Map linear velocity based on error in angular velocity
+  vel.linear.x = 0.0 + v_max_ * (1.0 - fabs(vel.angular.z) / CONTROL_ANGLE_THRESHOLD);
+  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : vel.linear.x;
   vel.angular.z = std::min(fabs(vel.angular.z), w_max_);
   vel.angular.z = copysign(vel.angular.z, cross_product);
   
   //vel.linear.x = v_max_;
   pub_vel_.publish(vel);
 
-  //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo X: %f Y: %f", &name_[0], velo.x(), velo.y());
+  //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
 
 void Agent::updatePreferredVelocity()
@@ -129,7 +139,7 @@ bool Agent::checkifGoalReached()
 {
 
   double distance_to_goal = distance(current_pose_.transform.translation, current_path_.front().pose.position);
-  if (distance_to_goal <= goal_threshold)
+  if (distance_to_goal <= goal_threshold_)
   {
     ROS_WARN("Goal reached!");
     return true;
@@ -141,11 +151,11 @@ bool Agent::checkifGoalReached()
 RVO::Vector2 Agent::getCurrentHeading()
 {
 
-  tf::Quaternion quat(current_pose_.transform.rotation.x, current_pose_.transform.rotation.y, current_pose_.transform.rotation.z, current_pose_.transform.rotation.w);
+  tf2::Quaternion quat(current_pose_.transform.rotation.x, current_pose_.transform.rotation.y, current_pose_.transform.rotation.z, current_pose_.transform.rotation.w);
 
   // Convert to RPY
   double roll, pitch, yaw;
-  tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  tf2::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 
   // Convert to unit vector
   RVO::Vector2 heading(cos(yaw), sin(yaw));
