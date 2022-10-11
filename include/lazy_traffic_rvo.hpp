@@ -11,7 +11,7 @@
 #include <ros/console.h>
 
 #define RVO_VELOCITY_SAMPLES (1000) //NUMBER OF SAMPLES PER EACH AGENT
-#define RVO_AGENT_RADIUS (0.20) // Radius of agent
+#define RVO_AGENT_RADIUS (0.15) // Radius of agent
 #define RVO_RADIUS_MULT_FACTOR (2) // since r1 + r2 = 2*r for RoboSAR, Define agent_radius and mult_factor for obstacle cone
 #define TIME_STEP (1) //frequence at which controller runs ( 1/ timestep)
 #define RVO_SAFETY_FACTOR (20.0f) //The safety factor of the agent (weight for penalizing candidate velocities - the higher the safety factor, the less 'aggressive' an agent is)
