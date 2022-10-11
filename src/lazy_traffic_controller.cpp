@@ -37,6 +37,7 @@ void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
     fleet_status_outdated_ = true;
 }
 
+
 bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
                                                       robosar_messages::robosar_controller::Response &res) {
     
@@ -47,6 +48,7 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
         // Stop all agents
         for(auto &agent : agent_map_) {
             agent.second.stopAgent();
+            agent.second.clearPath();
         }
     }
     else {
