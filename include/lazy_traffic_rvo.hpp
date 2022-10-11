@@ -73,7 +73,7 @@ inline bool AreSame(double a, double b)
 
 //Function to compute New Velocity using Reciprocal Velocity obstacles
 inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_info, 
-                                   const std::vector<rvo_agent_obstacle_info_s> neighbors_list) {
+                                   const std::vector<rvo_agent_obstacle_info_s>& neighbors_list) {
     
     //ROS_INFO(" ");
     //ROS_INFO(" ");
@@ -119,9 +119,9 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
         // iterate over neighbors
         for(auto n: neighbors_list) {
 
-            // if(i==0) {
-            //     ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
-            // }
+
+            ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
+
             // If neighbor is an obstacle, agent_Radius, position and other attributes would change
             // Change code accordingly
             float t_to_collision; // time to collision with neighbor
