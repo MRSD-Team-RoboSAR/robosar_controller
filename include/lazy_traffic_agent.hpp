@@ -30,7 +30,7 @@ class Agent {
 public:
     Agent() : name_(""), robot_frame_id_(""), current_path_(), current_pose_() {}
     Agent(std::string name, ros::NodeHandle nh) : name_(name), robot_frame_id_(name + "/base_link"), nh_(nh),
-                                                  ld_(0.4), v_max_(0.2), goal_threshold_(0.2), w_max_(0.5),
+                                                  ld_(0.4), v_max_(0.2), goal_threshold_(0.2), w_max_(0.5), at_rest(true),
                                                   preferred_velocity_(RVO::Vector2(0.0, 0.0)), current_velocity_(RVO::Vector2(0.0, 0.0)) {
         // Initialise publisher
         pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + name + "/cmd_vel", 1);
@@ -92,6 +92,7 @@ private:
     double w_max_;
     double ld_; // Lookahead distance
     double goal_threshold_;
+    bool at_rest;
     std::string name_;
 
     // Velocity obstacles related members
