@@ -178,28 +178,18 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
 
-bool Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, const int& map_width, const int& map_height, const float& map_resolution,const geometry_msgs::Point& map_origin) {
+void Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, const int& map_width, const int& map_height, const float& map_resolution,const geometry_msgs::Point& map_origin) {
   std::queue<RVO::Vector2> queue;
-  // ROS_INFO("BFS: Start X: %f Y: %f origin: %f resolution: %f", start.x(), start.y(), map_origin.x, map_resolution);
   //Convert to pixel and add it to queue
   RVO::Vector2 start_pose((start.x()-map_origin.x)/map_resolution, (start.y()-map_origin.y)/map_resolution);
   std::set<int> visited;
   int grids_explored=0;
-  // ROS_INFO("pose: start X: %f Y: %f", start_pose.x(), start_pose.y());
   queue.push(start_pose);
   int obstacle_count = 0;
-  int run_count = 0;
   while(!queue.empty()) {
-    // if(run_count>0) break;
-    run_count++;
     RVO::Vector2 current = queue.front();
     queue.pop();
-    // ROS_INFO("Run count: %d", run_count);
-    // grids_explored++;
-    // //if visited, continue
-    // ROS_INFO("Current X: %f Y: %f", current.x(), current.y());
-    // ROS_INFO("Int index: %d", (int)current.x() + (int)current.y()*map_width);
-    // ROS_INFO("Map data: %d", map_data[(int)current.x() + (int)current.y()*map_width]);
+    //if already visited, cotinue to next iteration
     if(visited.find(((int)current.x() + (int)current.y()*map_width)) != visited.end()) 
       continue;
     // insert into visited
@@ -208,10 +198,10 @@ bool Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8
     //convert to world co ordinates
     RVO::Vector2 current_position(map_origin.x + map_resolution*(current.x()), map_origin.y + map_resolution*(current.y()));
     float dist = euc_dist(current_position, start_position);
-    // ROS_INFO("Distance: %f \n", dist);
+    //if explored 1 meter, break
     if(dist > MAX_STATIC_OBS_DIST) {
       ROS_INFO("Outside radius. Exiting obstacle search");
-      return true;
+      return;
     }
     if (map_data[(int)current.x() + (int)current.y()*map_width] > 0) {
       
@@ -226,20 +216,18 @@ bool Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8
       neighbors_list_.push_back(obs);
     
     }
+    //expand node
     for(int i=0;i<8;i++) {
       RVO::Vector2 neighbour(current.x() + dir[i][0], current.y() + dir[i][1]);
-      // ROS_INFO("Neighbour X: %f Y: %f", neighbour.x(), neighbour.y());
-      // ROS_INFO("CURRENT X: %f Y: %f", current.x(), current.y());
-      //Boundary and visited checks
+      //Boundary checks
       if (neighbour.x() >= map_origin.x && neighbour.x() < map_height && neighbour.y() >= map_origin.y && neighbour.y() < map_width && neighbour.x()) {
         queue.push(neighbour);
       }
     }
   }
-  return true;
 }
 void Agent::computeStaticObstacles(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map) {
-  // Clear the static obstacles
+
   
 
   // Get the map resolution
@@ -259,12 +247,8 @@ void Agent::computeStaticObstacles(std::unordered_map<std::string, Agent> agent_
   map_data.resize(map_width*map_height);
   map_data = new_map.data;
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
-  ROS_INFO("Width: %d Height: %d", map_width, map_height);
-  if(breadthFirstSearch(current_position, map_data, map_width, map_height, map_resolution, map_origin)) {
-    ROS_INFO("BFS returned true");
-    return;
-  }
-  
+  //call bfs on agent to avoid static obstacles
+  breadthFirstSearch(current_position, map_data, map_width, map_height, map_resolution, map_origin);
 }
 void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
 {
