@@ -44,7 +44,7 @@ inline bool AreSame(double a, double b)
 
     //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
     RVO::Vector2 ba = p2 - p;
-    float sq_diam = radius * radius;
+    float sq_diam = sqr(radius);
     float time;
 
     float discr = -sqr(det(v, ba)) + sq_diam * absSq(v);
@@ -89,6 +89,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
     const bool is_collision = false;
 
     // Main loop
+    int print_count = 0;
     for(int i=0;i<RVO_VELOCITY_SAMPLES;++i) {
 
         //First candidate velocity is always preferred velocity
@@ -120,7 +121,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
         for(auto n: neighbors_list) {
 
 
-            ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
+            // ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
 
             // If neighbor is an obstacle, agent_Radius, position and other attributes would change
             // Change code accordingly
@@ -129,8 +130,12 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
             RVO::Vector2 vel_b = n.currrent_velocity;
             vel_a_to_b = vel_cand - vel_b;
             RVO::Vector2 neigh_pos = n.current_position;
-            float time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, 
-                              RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
+            float time;
+            time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_AGENT_RADIUS*RVO_RADIUS_MULT_FACTOR, is_collision);
+      
+            if(print_count==0)
+                     ROS_INFO("current position: %f : %f, vel_a_t_b: %f : %f, neigh pos: %f : %f, radius: %f TIme to collision: %f", pos_curr.x(), pos_curr.y(), vel_a_to_b.x(), vel_a_to_b.y(), neigh_pos.x(), neigh_pos.y(), 100*RVO_AGENT_RADIUS, time);
+            print_count++;
             if(is_collision)  {
                 t_to_collision = -ceil(time / TIME_STEP);
                 t_to_collision -= absSq(vel_cand) / (ego_agent_info.max_vel*ego_agent_info.max_vel);

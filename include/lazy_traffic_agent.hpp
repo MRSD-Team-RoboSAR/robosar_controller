@@ -16,7 +16,7 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include "Vector2.h"
 #include "lazy_traffic_rvo.hpp"
-
+#include <set>
 typedef pair<string, float> AgentDistPair;
 
 using namespace std;
@@ -25,6 +25,7 @@ using namespace std;
 #define MAX_NEIGH_DISTANCE 2.00 //Max distance among neighbors
 #define COLLISION_THRESH 50 // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE 1
+#define MAX_STATIC_OBS_DIST 0.6
 class Agent {
 
 public:
@@ -63,7 +64,7 @@ private:
     //Function to compute Nearest Neighbors of an agent using euclidian distance
     void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     void computeStaticObstacles(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map);
-    void breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, const int& map_width, const int& map_height, const double& map_resolution,const geometry_msgs::Point& map_origin);
+    void breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, const int& map_width, const int& map_height, const float& map_resolution,const geometry_msgs::Point& map_origin);
     RVO::Vector2 getCurrentHeading();
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;
@@ -81,7 +82,7 @@ private:
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
     rvo_agent_obstacle_info_s my_info;
     std::vector<int8_t> map_data;
-    int dir[8][2] = {{-1 , -1}, {-1 , 0}, {-1 , 1}, {0 , -1}, {0 , 1}, {1 , -1}, {1 , 0}, {1 , 1}};
+    float dir[8][2] = {{-1.0 , -1.0}, {-1.0 , 0.0}, {-1.0 , 1.0}, {0.0 , -1.0}, {0.0 , 1.0}, {1.0 , -1.0}, {1.0 , 0.0}, {1.0 , 1.0}};
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H
