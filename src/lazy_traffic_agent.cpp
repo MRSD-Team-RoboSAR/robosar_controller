@@ -212,7 +212,7 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
 
-void Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
+void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
                                 const int& map_width, const int& map_height, const float& map_resolution,
                                 const geometry_msgs::Point& map_origin) {
   
@@ -300,7 +300,7 @@ void Agent::computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map) {
   map_data = new_map.data;
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   //call bfs on agent to detect static obstacles
-  breadthFirstSearch(current_position, map_data, map_width, map_height, map_resolution, map_origin);
+  staticObstacleBfs(current_position, map_data, map_width, map_height, map_resolution, map_origin);
 
 }
 void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
