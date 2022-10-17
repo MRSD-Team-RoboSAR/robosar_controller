@@ -13,7 +13,6 @@
 
 #include "robosar_messages/robosar_controller.h"
 #include "lazy_traffic_agent.hpp"
-
 // ROS stuff
 #include <tf/tf.h>
 #include <tf2_ros/transform_listener.h>
@@ -69,6 +68,7 @@ private:
     ros::Timer controller_timer;
     ros::Subscriber status_subscriber_;
     ros::Subscriber occupancy_grid_subscriber_;
+    ros::Subscriber gui_subscriber_;
     ros::NodeHandle nh_;
     
 };

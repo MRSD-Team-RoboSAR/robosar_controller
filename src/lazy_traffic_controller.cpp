@@ -5,7 +5,7 @@
 
 
 LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
-                                            velocity_calc_period_s(0.2), controller_period_s(0.2), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
+                                            velocity_calc_period_s(0.5), controller_period_s(0.5), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
 
@@ -47,6 +47,7 @@ void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
     fleet_status_outdated_ = true;
 }
 
+
 bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
                                                       robosar_messages::robosar_controller::Response &res) {
     
@@ -57,6 +58,7 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
         // Stop all agents
         for(auto &agent : agent_map_) {
             agent.second.stopAgent();
+            agent.second.clearPath();
         }
     }
     else {
@@ -138,7 +140,8 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
     else {
         iter++;
          for(auto &agent : agent_map_) {
-
+            
+            // Velocity is not sent if it is already zero
             agent.second.sendVelocity(agent.second.rvo_velocity_);
         }
     }

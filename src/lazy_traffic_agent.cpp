@@ -2,8 +2,8 @@
 
 #include "lazy_traffic_agent.hpp"
 
-#define PI 3.14159265
-#define CONTROL_ANGLE_THRESHOLD PI/2.0
+#define PI (3.14159265)
+#define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 
 void Agent::stopAgent(void)
 {
@@ -14,6 +14,14 @@ void Agent::stopAgent(void)
   pub_vel_.publish(vel);
 }
 
+
+// Write a function to clear the paths 
+
+void Agent::clearPath(void){
+  
+  std::queue<geometry_msgs::PoseStamped>().swap(current_path_);
+
+}
 void Agent::sendVelocity(RVO::Vector2 velo)
 {
 
@@ -36,14 +44,16 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   // Calculate dot product
   vel.angular.z = acos(getCurrentHeading() * velo_norm);
 
-  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : v_max_;
+  // Map linear velocity based on error in angular velocity
+  vel.linear.x = 0.0 + v_max_ * (1.0 - fabs(vel.angular.z) / CONTROL_ANGLE_THRESHOLD);
+  vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : vel.linear.x;
   vel.angular.z = std::min(fabs(vel.angular.z), w_max_);
   vel.angular.z = copysign(vel.angular.z, cross_product);
   
   //vel.linear.x = v_max_;
   pub_vel_.publish(vel);
 
-  //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo X: %f Y: %f", &name_[0], velo.x(), velo.y());
+  //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
 
 void Agent::updatePreferredVelocity()
@@ -74,6 +84,7 @@ void Agent::updatePreferredVelocity()
     preferred_velocity_ = norm(preferred_velocity_);
     preferred_velocity_ *= v_max_;
     ROS_INFO("[LT_CONTROLLER-%s]: Preferred Velo X: %f Y: %f", &name_[0], preferred_velocity_.x(), preferred_velocity_.y());
+    publishPreferredVelocityMarker();
   }
 
 }
@@ -89,7 +100,29 @@ void Agent::ppProcessLookahead(geometry_msgs::Transform current_pose)
 {
 
   // for (; pp_idx_ < cartesian_path_.poses.size(); pp_idx_++)
-  int pp_idx_ = 0;
+  int pp_idx = 0;
+  // Find closest point on path and pop all the previous points
+  std::queue<geometry_msgs::PoseStamped> local_path_ = current_path_;
+  double min_dist = INFINITY;
+  int min_pp_idx = 0;
+  while (!local_path_.empty())
+  {
+    double dist_to_front_point = distance(local_path_.front().pose.position, current_pose.translation); 
+    if (dist_to_front_point < min_dist)
+    {
+      min_dist = dist_to_front_point;
+      min_pp_idx = pp_idx;
+    }
+    local_path_.pop();
+    pp_idx++;
+  }
+
+  // pop points till min pp_idx
+  for (int idx = 0; idx < min_pp_idx; idx++)
+  {
+    current_path_.pop();
+  }
+
   while (current_path_.size() > 1)
   {
     double dist_to_path = distance(current_path_.front().pose.position, current_pose.translation);
@@ -129,7 +162,7 @@ bool Agent::checkifGoalReached()
 {
 
   double distance_to_goal = distance(current_pose_.transform.translation, current_path_.front().pose.position);
-  if (distance_to_goal <= goal_threshold)
+  if (distance_to_goal <= goal_threshold_)
   {
     ROS_WARN("Goal reached!");
     return true;
@@ -141,11 +174,11 @@ bool Agent::checkifGoalReached()
 RVO::Vector2 Agent::getCurrentHeading()
 {
 
-  tf::Quaternion quat(current_pose_.transform.rotation.x, current_pose_.transform.rotation.y, current_pose_.transform.rotation.z, current_pose_.transform.rotation.w);
+  tf2::Quaternion quat(current_pose_.transform.rotation.x, current_pose_.transform.rotation.y, current_pose_.transform.rotation.z, current_pose_.transform.rotation.w);
 
   // Convert to RPY
   double roll, pitch, yaw;
-  tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  tf2::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 
   // Convert to unit vector
   RVO::Vector2 heading(cos(yaw), sin(yaw));
@@ -174,6 +207,7 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   // Calculate new velocity
   rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
 
+  publishVOVelocityMarker();
   // Handle the calculated velocity
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
@@ -289,4 +323,60 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     neigh.max_vel = agent_map[neigh.agent_name].v_max_;
     neighbors_list_.push_back(neigh);
   }
+}
+
+void Agent::publishPreferredVelocityMarker(void) {
+
+  // update marker and publish it on ROS
+  vel_marker_.header.stamp = ros::Time();
+  vel_marker_.id = vel_marker_.id + 1;
+  vel_marker_.pose.position.x = current_pose_.transform.translation.x;
+  vel_marker_.pose.position.y = current_pose_.transform.translation.y;
+  vel_marker_.pose.position.z = 0.0;
+
+  // Set the orientation from preferred velocity direction
+  double yaw = atan2(preferred_velocity_.y(), preferred_velocity_.x());
+  tf2::Matrix3x3 rot;
+  rot.setEulerYPR(yaw,0.0,0.0);
+  tf2::Quaternion quat;
+  rot.getRotation(quat);
+  vel_marker_.pose.orientation.x = quat.x();
+  vel_marker_.pose.orientation.y = quat.y();
+  vel_marker_.pose.orientation.z = quat.z();
+  vel_marker_.pose.orientation.w = quat.w();
+
+  vel_marker_.color.r = 1.0;
+  vel_marker_.color.g = 0.0;
+  vel_marker_.color.b = 0.0;
+
+  // Publish the marker
+  vel_marker_pub_.publish(vel_marker_);
+}
+
+void Agent::publishVOVelocityMarker(void) {
+
+  // update marker and publish it on ROS
+  vel_marker_.header.stamp = ros::Time();
+  vel_marker_.id = vel_marker_.id + 1;
+  vel_marker_.pose.position.x = current_pose_.transform.translation.x;
+  vel_marker_.pose.position.y = current_pose_.transform.translation.y;
+  vel_marker_.pose.position.z = 0.0;
+
+  // Set the orientation from preferred velocity direction
+  double yaw = atan2(rvo_velocity_.y(), rvo_velocity_.x());
+  tf2::Matrix3x3 rot;
+  rot.setEulerYPR(yaw,0.0,0.0);
+  tf2::Quaternion quat;
+  rot.getRotation(quat);
+  vel_marker_.pose.orientation.x = quat.x();
+  vel_marker_.pose.orientation.y = quat.y();
+  vel_marker_.pose.orientation.z = quat.z();
+  vel_marker_.pose.orientation.w = quat.w();
+
+  vel_marker_.color.r = 0.0;
+  vel_marker_.color.g = 0.0;
+  vel_marker_.color.b = 1.0;
+
+  // Publish the marker
+  vel_marker_pub_.publish(vel_marker_);
 }
