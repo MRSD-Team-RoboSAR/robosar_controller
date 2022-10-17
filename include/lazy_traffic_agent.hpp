@@ -57,6 +57,8 @@ public:
         vel_marker_.color.a = 1.0; // Don't forget to set the alpha!
         vel_marker_.lifetime = ros::Duration(1.0);
 
+        // Initialise dir model for bfs
+        dir_ = {{-1 , -1}, {-1 , 0}, {-1 , 1}, {0 , -1}, {0 , 1}, {1 , -1}, {1 , 0}, {1 , 1}};
     }
     ~Agent() {}
 
@@ -83,8 +85,10 @@ private:
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
     void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
-    void computeStaticObstacles(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map);
-    void breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, const int& map_width, const int& map_height, const float& map_resolution,const geometry_msgs::Point& map_origin);
+    void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
+    void breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
+                            const int& map_width, const int& map_height, 
+                            const float& map_resolution,const geometry_msgs::Point& map_origin);
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
     void publishVOVelocityMarker(void);
@@ -105,9 +109,7 @@ private:
 
     // Velocity obstacles related members
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
-    rvo_agent_obstacle_info_s my_info;
-    std::vector<int8_t> map_data;
-    float dir[8][2] = {{-1.0 , -1.0}, {-1.0 , 0.0}, {-1.0 , 1.0}, {0.0 , -1.0}, {0.0 , 1.0}, {1.0 , -1.0}, {1.0 , 0.0}, {1.0 , 1.0}};
+    std::vector<std::vector<int>> dir_;
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H

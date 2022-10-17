@@ -129,8 +129,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
             RVO::Vector2 vel_b = n.currrent_velocity;
             vel_a_to_b = vel_cand - vel_b;
             RVO::Vector2 neigh_pos = n.current_position;
-            float time;
-            time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_AGENT_RADIUS*RVO_RADIUS_MULT_FACTOR, is_collision);
+            float time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
             if(is_collision)  {
                 t_to_collision = -std::ceil(time / TIME_STEP);
                 t_to_collision -= absSq(vel_cand) / (ego_agent_info.max_vel*ego_agent_info.max_vel);

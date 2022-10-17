@@ -194,10 +194,10 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
     return;
   }
 
-  // Calculate neighbours
+  // Calculate dynamic and static neighbours
   computeNearestNeighbors(agent_map);
-  if(USE_STATIC_OBSTACLE_AVOIDANCE == 1)
-    computeStaticObstacles(agent_map, ocm);
+  computeStaticObstacles(ocm);
+
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   // Create new self structure for RVO
   rvo_agent_obstacle_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position, v_max_};
@@ -212,32 +212,46 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
 
-void Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, const int& map_width, const int& map_height, const float& map_resolution,const geometry_msgs::Point& map_origin) {
-  std::queue<RVO::Vector2> queue;
-  //Convert to pixel and add it to queue
-  RVO::Vector2 start_pose((start.x()-map_origin.x)/map_resolution, (start.y()-map_origin.y)/map_resolution);
+void Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
+                                const int& map_width, const int& map_height, const float& map_resolution,
+                                const geometry_msgs::Point& map_origin) {
+  
+  // Local variables
+  std::queue<std::pair<int,int>> queue;
   std::set<int> visited;
   int grids_explored=0;
-  queue.push(start_pose);
   int obstacle_count = 0;
+
+  //Convert to pixel and add it to queue
+  std::pair<int,int> start_ind = std::make_pair((int)((start.x()-map_origin.x)/map_resolution),
+                                                (int)((start.y()-map_origin.y)/map_resolution));
+  queue.push(start_ind);
+  
   while(!queue.empty()) {
-    RVO::Vector2 current = queue.front();
+    std::pair<int,int> current = queue.front();
     queue.pop();
-    //if already visited, cotinue to next iteration
-    if(visited.find(((int)current.x() + (int)current.y()*map_width)) != visited.end()) 
+
+    //if already visited, continue to next iteration
+    if(visited.find((current.first + current.second*map_width)) != visited.end()) 
       continue;
     // insert into visited
-    visited.insert(((int)current.x() + (int)current.y()*map_width));
+    else
+      visited.insert(current.first + current.second*map_width);
+
+    // Check if reached end of BFS radius
     RVO::Vector2 start_position(start.x(), start.y());
-    //convert to world co ordinates
-    RVO::Vector2 current_position(map_origin.x + map_resolution*(current.x()), map_origin.y + map_resolution*(current.y()));
+    //convert to world coordinates
+    RVO::Vector2 current_position(map_origin.x + map_resolution*(float)(current.first), 
+                                  map_origin.y + map_resolution*(float)(current.second));
+
     float dist = euc_dist(current_position, start_position);
-    //if explored 1 meter, break
     if(dist > MAX_STATIC_OBS_DIST) {
       ROS_INFO("Outside radius. Exiting obstacle search");
-      return;
+      break;
     }
-    if (map_data[(int)current.x() + (int)current.y()*map_width] > 0) {
+
+    // Check if obstacle
+    if (map_data[current.first + current.second*map_width] > 0) {
       
       // Add to obstacle list
       ROS_INFO("adding static obstacle at %f, %f", current_position.x(), current_position.y());
@@ -248,21 +262,24 @@ void Agent::breadthFirstSearch(const RVO::Vector2& start, const std::vector<int8
       obs.current_position = obs_pos;
       obs.currrent_velocity = RVO::Vector2(0.0,0.0);
       neighbors_list_.push_back(obs);
-    
     }
+
     //expand node
-    for(int i=0;i<8;i++) {
-      RVO::Vector2 neighbour(current.x() + dir[i][0], current.y() + dir[i][1]);
+    for(const auto& dir : dir_) {
+      std::pair<int,int> neighbour_ind = std::make_pair(current.first + dir[0], current.second + dir[1]);
       //Boundary checks
-      if (neighbour.x() >= map_origin.x && neighbour.x() < map_height && neighbour.y() >= map_origin.y && neighbour.y() < map_width && neighbour.x()) {
-        queue.push(neighbour);
+      if (neighbour_ind.first >= 0 && neighbour_ind.first < map_height && 
+          neighbour_ind.second >= 0 && neighbour_ind.second < map_width ) {
+            queue.push(neighbour_ind);
       }
     }
   }
 }
-void Agent::computeStaticObstacles(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map) {
 
-  
+void Agent::computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map) {
+
+  if(USE_STATIC_OBSTACLE_AVOIDANCE != 1)
+    return;
 
   // Get the map resolution
   float map_resolution = new_map.info.resolution;
@@ -277,12 +294,14 @@ void Agent::computeStaticObstacles(std::unordered_map<std::string, Agent> agent_
   int map_height = new_map.info.height;
 
   // Get the map data
+  std::vector<int8_t> map_data;
   map_data.clear();
   map_data.resize(map_width*map_height);
   map_data = new_map.data;
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
-  //call bfs on agent to avoid static obstacles
+  //call bfs on agent to detect static obstacles
   breadthFirstSearch(current_position, map_data, map_width, map_height, map_resolution, map_origin);
+
 }
 void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
 {

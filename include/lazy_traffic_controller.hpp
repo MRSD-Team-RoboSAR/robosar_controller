@@ -32,8 +32,7 @@ public:
 
     LazyTrafficController(void);
     ~LazyTrafficController(void);
-    // occupancy grid map
-    nav_msgs::OccupancyGrid occupancy_grid_map;
+   
 
 private:
 
@@ -63,13 +62,14 @@ private:
     // ROS stuff
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
-    ros::ServiceClient status_client; 
-    ros::ServiceServer controller_service;
-    ros::Timer controller_timer;
+    ros::ServiceClient status_client_; 
+    ros::ServiceServer controller_service_;
+    ros::Timer controller_timer_;
     ros::Subscriber status_subscriber_;
     ros::Subscriber occupancy_grid_subscriber_;
     ros::Subscriber gui_subscriber_;
     ros::NodeHandle nh_;
+    nav_msgs::OccupancyGrid occupancy_grid_map_;
     
 };
 #endif // LAZY_TRAFFIC_CONTROLLER_H
