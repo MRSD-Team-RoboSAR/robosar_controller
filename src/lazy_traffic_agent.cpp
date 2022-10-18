@@ -246,7 +246,7 @@ void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_
 
     float dist = euclidean_dist(current_position, start_position);
     if(dist > MAX_STATIC_OBS_DIST) {
-      ROS_INFO("Outside radius. Exiting obstacle search");
+      //ROS_INFO("Outside radius. Exiting obstacle search");
       break;
     }
 
@@ -254,7 +254,7 @@ void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_
     if (map_data[current.first + current.second*map_width] > 0) {
       
       // Add to obstacle list
-      ROS_INFO("adding static obstacle at %f, %f", current_position.x(), current_position.y());
+      //ROS_INFO("adding static obstacle at %f, %f", current_position.x(), current_position.y());
       obstacle_count++;
       rvo_agent_obstacle_info_s obs;
       obs.agent_name = "obstacle"+std::to_string(obstacle_count);
