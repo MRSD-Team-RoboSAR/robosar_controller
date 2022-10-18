@@ -5,6 +5,7 @@
 
 #include <string>
 #include <queue>
+#include <set>
 
 // ROS stuff
 #include <geometry_msgs/Twist.h>
@@ -14,7 +15,9 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include "robosar_messages/controller_status.h"
+#include <nav_msgs/OccupancyGrid.h>
 #include <visualization_msgs/Marker.h>
+
 
 #include "Vector2.h"
 #include "lazy_traffic_rvo.hpp"
@@ -25,6 +28,10 @@ using namespace std;
 
 #define MAX_NEIGHBORS (4) // Maximum number of neighbors to consider
 #define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
+#define COLLISION_THRESH (50) // Collision threshold
+#define USE_STATIC_OBSTACLE_AVOIDANCE (1)
+#define MAX_STATIC_OBS_DIST (0.5)
+
 class Agent {
 
 public:
@@ -50,6 +57,8 @@ public:
         vel_marker_.color.a = 1.0; // Don't forget to set the alpha!
         vel_marker_.lifetime = ros::Duration(1.0);
 
+        // Initialise dir model for bfs
+        dir_ = {{-1 , -1}, {-1 , 0}, {-1 , 1}, {0 , -1}, {0 , 1}, {1 , -1}, {1 , 0}, {1 , 1}};
     }
     ~Agent() {}
 
@@ -61,7 +70,7 @@ public:
     void clearPath(void);
     void updatePreferredVelocity(void);
     // Function to call reciprocal Velocity Obstacles
-    void invokeRVO(std::unordered_map<std::string, Agent> agent_map);
+    void invokeRVO(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map);
 
     std::string robot_frame_id_;
     //Velocity Obstacle related members
@@ -76,6 +85,10 @@ private:
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
     void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
+    void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
+    void staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
+                            const int& map_width, const int& map_height, 
+                            const float& map_resolution,const geometry_msgs::Point& map_origin);
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
     void publishVOVelocityMarker(void);
@@ -95,8 +108,8 @@ private:
     std::string name_;
 
     // Velocity obstacles related members
-    std::vector<rvo_agent_info_s> neighbors_list_;
-    rvo_agent_info_s my_info;
+    std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
+    std::vector<std::vector<int>> dir_;
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H

@@ -19,13 +19,13 @@
 
 typedef std::pair<std::string, float> AgentDistPair;
 
-typedef struct rvo_agent_info {
+typedef struct rvo_agent_obstacle_info {
   std::string agent_name;
   RVO::Vector2 currrent_velocity;
   RVO::Vector2 preferred_velocity;
   RVO::Vector2 current_position;
   double max_vel;
-} rvo_agent_info_s;
+} rvo_agent_obstacle_info_s;
 
 
 inline float sqr(float a) {
@@ -71,8 +71,8 @@ inline bool AreSame(double a, double b)
 
 
 //Function to compute New Velocity using Reciprocal Velocity obstacles
-inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info, 
-                                   const std::vector<rvo_agent_info_s> neighbors_list) {
+inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_info, 
+                                   const std::vector<rvo_agent_obstacle_info_s>& neighbors_list) {
     
     //ROS_INFO(" ");
     //ROS_INFO(" ");
@@ -88,6 +88,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info,
     const bool is_collision = false;
 
     // Main loop
+    int print_count = 0;
     for(int i=0;i<RVO_VELOCITY_SAMPLES;++i) {
 
         //First candidate velocity is always preferred velocity
@@ -118,9 +119,9 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info,
         // iterate over neighbors
         for(const auto& n: neighbors_list) {
 
-            // if(i==0) {
-            //     ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
-            // }
+
+            // ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
+
             // If neighbor is an obstacle, agent_Radius, position and other attributes would change
             // Change code accordingly
             float t_to_collision; // time to collision with neighbor
@@ -128,8 +129,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_info_s ego_agent_info,
             RVO::Vector2 vel_b = n.currrent_velocity;
             vel_a_to_b = vel_cand - vel_b;
             RVO::Vector2 neigh_pos = n.current_position;
-            float time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, 
-                              RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
+            float time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
             if(is_collision)  {
                 t_to_collision = -std::ceil(time / TIME_STEP);
                 t_to_collision -= absSq(vel_cand) / (ego_agent_info.max_vel*ego_agent_info.max_vel);

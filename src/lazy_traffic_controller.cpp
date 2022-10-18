@@ -8,8 +8,11 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
                                             velocity_calc_period_s(0.5), controller_period_s(0.5), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
     
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
+
+    // subscribe to occupancy grid map
+    occupancy_grid_subscriber_ = nh_.subscribe("/map", 1, &LazyTrafficController::occupancyGridCallback, this);
     // Get latest fleet info from agent bringup
-    status_client = nh_.serviceClient<robosar_messages::agent_status>("/robosar_agent_bringup_node/agent_status");
+    status_client_ = nh_.serviceClient<robosar_messages::agent_status>("/robosar_agent_bringup_node/agent_status");
     // Get active agents from agent bringup
     active_agents = getFleetStatusInfo();
     ROS_INFO(" [LT_CONTROLLER] Active fleet size %ld",active_agents.size());
@@ -21,16 +24,22 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
     traffic_controller_thread_ = std::thread(&LazyTrafficController::RunController, this);
 
     // advertise controller service
-    controller_service = nh_.advertiseService("lazy_traffic_controller", &LazyTrafficController::controllerServiceCallback, this);
+    controller_service_ = nh_.advertiseService("lazy_traffic_controller", &LazyTrafficController::controllerServiceCallback, this);
 
     // Start controller timer
-    controller_timer = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LazyTrafficController::computeVelocities, this, _1));
+    controller_timer_ = nh_.createTimer(ros::Duration(controller_period_s),boost::bind(&LazyTrafficController::computeVelocities, this, _1));
 }
 
 LazyTrafficController::~LazyTrafficController() {
 
     controller_active_ = false;
     traffic_controller_thread_.join();
+}
+
+// subscribe to occupancy grid map and update the map
+void LazyTrafficController::occupancyGridCallback(const nav_msgs::OccupancyGrid &occupancy_grid_msg) {
+    std::lock_guard<std::mutex> lock(map_mutex);
+    occupancy_grid_map_ = occupancy_grid_msg;
 }
 
 void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
@@ -116,7 +125,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
         // Calculate preferred velocities for all agents
         for(auto &agent : agent_map_) {
             agent.second.updatePreferredVelocity();
-            agent.second.invokeRVO(agent_map_);
+            agent.second.invokeRVO(agent_map_, occupancy_grid_map_);
 
             agent.second.sendVelocity(agent.second.rvo_velocity_);
             // Inform other subsystems of the controller status
@@ -184,9 +193,9 @@ std::set<std::string> LazyTrafficController::getFleetStatusInfo() {
 
     robosar_messages::agent_status srv;
     // wait for service to be available
-    status_client.waitForExistence();
+    status_client_.waitForExistence();
 
-    if (status_client.call(srv)) {
+    if (status_client_.call(srv)) {
         std::vector<std::string> agentsVec = srv.response.agents_active;
         std::set<std::string> agentsSet;
 

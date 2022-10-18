@@ -185,8 +185,7 @@ RVO::Vector2 Agent::getCurrentHeading()
   return heading;
 }
 
-void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
-{
+void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& ocm) {
   // Dont invoke RVO if the preferred velocity is zero
   // or if there is no path to follow
   if ((AreSame(preferred_velocity_.x(), 0.0) && AreSame(preferred_velocity_.y(), 0.0)) ||
@@ -195,12 +194,13 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
     return;
   }
 
-  // Calculate neighbours
+  // Calculate dynamic and static neighbours
   computeNearestNeighbors(agent_map);
+  computeStaticObstacles(ocm);
 
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   // Create new self structure for RVO
-  rvo_agent_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position, v_max_};
+  rvo_agent_obstacle_info_s my_info{name_, current_velocity_, preferred_velocity_, current_position, v_max_};
   
   //ROS_INFO("[LT_CONTROLLER-%s]: Neighbours: %ld", &name_[0], neighbors_list_.size());
 
@@ -212,6 +212,97 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map)
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
 
+void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
+                                const int& map_width, const int& map_height, const float& map_resolution,
+                                const geometry_msgs::Point& map_origin) {
+  
+  // Local variables
+  std::queue<std::pair<int,int>> queue;
+  std::set<int> visited;
+  int grids_explored=0;
+  int obstacle_count = 0;
+
+  //Convert to pixel and add it to queue
+  std::pair<int,int> start_ind = std::make_pair((int)((start.x()-map_origin.x)/map_resolution),
+                                                (int)((start.y()-map_origin.y)/map_resolution));
+  queue.push(start_ind);
+  
+  while(!queue.empty()) {
+    std::pair<int,int> current = queue.front();
+    queue.pop();
+
+    //if already visited, continue to next iteration
+    if(visited.find((current.first + current.second*map_width)) != visited.end()) 
+      continue;
+    // insert into visited
+    else
+      visited.insert(current.first + current.second*map_width);
+
+    // Check if reached end of BFS radius
+    RVO::Vector2 start_position(start.x(), start.y());
+    //convert to world coordinates
+    RVO::Vector2 current_position(map_origin.x + map_resolution*(float)(current.first), 
+                                  map_origin.y + map_resolution*(float)(current.second));
+
+    float dist = euclidean_dist(current_position, start_position);
+    if(dist > MAX_STATIC_OBS_DIST) {
+      //ROS_INFO("Outside radius. Exiting obstacle search");
+      break;
+    }
+
+    // Check if obstacle
+    if (map_data[current.first + current.second*map_width] > 0) {
+      
+      // Add to obstacle list
+      //ROS_INFO("adding static obstacle at %f, %f", current_position.x(), current_position.y());
+      obstacle_count++;
+      rvo_agent_obstacle_info_s obs;
+      obs.agent_name = "obstacle"+std::to_string(obstacle_count);
+      RVO::Vector2 obs_pos(current_position.x(), current_position.y());
+      obs.current_position = obs_pos;
+      obs.currrent_velocity = RVO::Vector2(0.0,0.0);
+      neighbors_list_.push_back(obs);
+    }
+
+    //expand node
+    for(const auto& dir : dir_) {
+      std::pair<int,int> neighbour_ind = std::make_pair(current.first + dir[0], current.second + dir[1]);
+      //Boundary checks
+      if (neighbour_ind.first >= 0 && neighbour_ind.first < map_height && 
+          neighbour_ind.second >= 0 && neighbour_ind.second < map_width ) {
+            queue.push(neighbour_ind);
+      }
+    }
+  }
+}
+
+void Agent::computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map) {
+
+  if(USE_STATIC_OBSTACLE_AVOIDANCE != 1)
+    return;
+
+  // Get the map resolution
+  float map_resolution = new_map.info.resolution;
+
+  // Get the map origin
+  geometry_msgs::Point map_origin;
+  map_origin.x = new_map.info.origin.position.x;
+  map_origin.y = new_map.info.origin.position.y;
+
+  // Get the map dimensions
+  int map_width = new_map.info.width;
+  int map_height = new_map.info.height;
+
+  // Get the map data
+  std::vector<int8_t> map_data;
+  map_data.clear();
+  map_data.resize(map_width*map_height);
+  map_data = new_map.data;
+  RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
+  //call bfs on agent to detect static obstacles
+  staticObstacleBfs(current_position, map_data, map_width, map_height, map_resolution, map_origin);
+
+}
 void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
 {
   priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
@@ -227,7 +318,7 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
 
     RVO::Vector2 neigh_agent_pos(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
     string neighbour_agent_name = agent.first;
-    float euc_distance = euc_dist(neigh_agent_pos, my_pose);
+    float euc_distance = euclidean_dist(neigh_agent_pos, my_pose);
 
     if (euc_distance < MAX_NEIGH_DISTANCE)
       all_neighbors.push(make_pair(neighbour_agent_name, euc_distance));
@@ -241,7 +332,7 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     all_neighbors.pop();
 
     // Create and add the nearest neighbor to the list of neighbors
-    rvo_agent_info_s neigh;
+    rvo_agent_obstacle_info_s neigh;
     neigh.agent_name = agent_dist_pair.first;
     RVO::Vector2 neigh_agent_pos(agent_map[neigh.agent_name].current_pose_.transform.translation.x, 
                                   agent_map[neigh.agent_name].current_pose_.transform.translation.y);

@@ -155,12 +155,18 @@ inline float atan(const RVO::Vector2& q) { return std::atan2(q.y(), q.x()); }
     \returns Returns the determinant of the 2x2 matrix formed by using p as the upper row and q as the lower row. */
 inline float det(const RVO::Vector2& p, const RVO::Vector2& q) { return p.x()*q.y() - p.y()*q.x(); }
 
-
 inline float euc_dist(const RVO::Vector2 v1, const RVO::Vector2 v2) {
     float x1 = v1.x();
     float y1 = v1.y();
     float x2 = v2.x();
     float y2 = v2.y();
     return abs(sqrt(x1*x1)-sqrt(x2*x2)) + abs(sqrt(y1*y1)-sqrt(y2*y2));
+}
+inline float euclidean_dist(const RVO::Vector2 v1, const RVO::Vector2 v2) {
+    float x1 = v1.x();
+    float y1 = v1.y();
+    float x2 = v2.x();
+    float y2 = v2.y();
+    return sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
 }
 #endif

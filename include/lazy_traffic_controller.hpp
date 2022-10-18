@@ -2,6 +2,7 @@
 #ifndef LAZY_TRAFFIC_CONTROLLER_H
 #define LAZY_TRAFFIC_CONTROLLER_H
 
+
 #include <string>
 #include <cmath>
 #include <algorithm>
@@ -31,7 +32,7 @@ public:
 
     LazyTrafficController(void);
     ~LazyTrafficController(void);
-
+   
 
 private:
 
@@ -40,6 +41,7 @@ private:
     std::set<std::string> getFleetStatusInfo(void);
     void initialiseAgentMap(std::set<std::string> active_agents);
     void computeVelocities(const ros::TimerEvent&);
+    void occupancyGridCallback(const nav_msgs::OccupancyGrid &occupancy_grid_msg);
     bool controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
                                    robosar_messages::robosar_controller::Response &res);
     void updateAgentPoses(void);
@@ -60,12 +62,14 @@ private:
     // ROS stuff
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;
-    ros::ServiceClient status_client; 
-    ros::ServiceServer controller_service;
-    ros::Timer controller_timer;
+    ros::ServiceClient status_client_; 
+    ros::ServiceServer controller_service_;
+    ros::Timer controller_timer_;
     ros::Subscriber status_subscriber_;
+    ros::Subscriber occupancy_grid_subscriber_;
     ros::Subscriber gui_subscriber_;
     ros::NodeHandle nh_;
-
+    nav_msgs::OccupancyGrid occupancy_grid_map_;
+    
 };
 #endif // LAZY_TRAFFIC_CONTROLLER_H
