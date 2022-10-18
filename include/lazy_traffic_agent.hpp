@@ -30,7 +30,7 @@ using namespace std;
 #define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
-#define MAX_STATIC_OBS_DIST (1.0)
+#define MAX_STATIC_OBS_DIST (0.5)
 
 class Agent {
 
