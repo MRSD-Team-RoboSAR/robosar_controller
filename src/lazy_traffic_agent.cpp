@@ -244,7 +244,7 @@ void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_
     RVO::Vector2 current_position(map_origin.x + map_resolution*(float)(current.first), 
                                   map_origin.y + map_resolution*(float)(current.second));
 
-    float dist = euc_dist(current_position, start_position);
+    float dist = euclidean_dist(current_position, start_position);
     if(dist > MAX_STATIC_OBS_DIST) {
       ROS_INFO("Outside radius. Exiting obstacle search");
       break;
@@ -318,7 +318,7 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
 
     RVO::Vector2 neigh_agent_pos(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
     string neighbour_agent_name = agent.first;
-    float euc_distance = euc_dist(neigh_agent_pos, my_pose);
+    float euc_distance = euclidean_dist(neigh_agent_pos, my_pose);
 
     if (euc_distance < MAX_NEIGH_DISTANCE)
       all_neighbors.push(make_pair(neighbour_agent_name, euc_distance));
