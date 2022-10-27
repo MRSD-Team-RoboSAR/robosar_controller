@@ -4,6 +4,7 @@
 
 #define PI (3.14159265)
 #define CONTROL_ANGLE_THRESHOLD (PI/2.0)
+#define CONTROL_ANGLE_THRESHOLD_INIT (0.17) //10 degrees
 
 void Agent::stopAgent(void)
 {
@@ -12,6 +13,7 @@ void Agent::stopAgent(void)
   vel.linear.x = 0.0;
   vel.angular.z = 0.0;
   pub_vel_.publish(vel);
+  at_rest = true;
 }
 
 
@@ -47,6 +49,9 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   // Map linear velocity based on error in angular velocity
   vel.linear.x = 0.0 + v_max_ * (1.0 - fabs(vel.angular.z) / CONTROL_ANGLE_THRESHOLD);
   vel.linear.x = fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD ? 0.0 : vel.linear.x;
+  vel.linear.x = at_rest && fabs(vel.angular.z)>CONTROL_ANGLE_THRESHOLD_INIT ? 0.0 : vel.linear.x;
+  at_rest = AreSame(vel.linear.x, 0.0) ? true : false;
+
   vel.angular.z = std::min(fabs(vel.angular.z), w_max_);
   vel.angular.z = copysign(vel.angular.z, cross_product);
   
