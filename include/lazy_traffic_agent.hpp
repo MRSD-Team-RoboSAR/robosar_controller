@@ -31,7 +31,7 @@ using namespace std;
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
-
+#define ANGULAR_VELOCITY (0.5)
 class Agent {
 
 public:
@@ -111,6 +111,8 @@ private:
     // Velocity obstacles related members
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
     std::vector<std::vector<int>> dir_;
+    enum GOAL_TYPE {SURVEILLANCE, EXPLORE, HOME};
+    GOAL_TYPE goal_type_ = SURVEILLANCE;
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H

@@ -5,7 +5,7 @@
 #define PI (3.14159265)
 #define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 #define CONTROL_ANGLE_THRESHOLD_INIT (0.17) //10 degrees
-
+#define USE_STATE_MACHINE (true)
 void Agent::stopAgent(void)
 {
   // TODO Check if velocity is non zero
@@ -24,8 +24,7 @@ void Agent::clearPath(void){
   std::queue<geometry_msgs::PoseStamped>().swap(current_path_);
 
 }
-void Agent::sendVelocity(RVO::Vector2 velo)
-{
+void Agent::sendVelocity(RVO::Vector2 velo) {
 
   // Check if velocity is non zero
   if (AreSame(velo.x(), 0.0) && AreSame(velo.y(), 0.0)) {
@@ -60,7 +59,24 @@ void Agent::sendVelocity(RVO::Vector2 velo)
 
   //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
+void turnInplace() {
+  clock_t start = clock();
+  
+  while(1) {
 
+    geometry_msgs::Twist vel;
+    vel.linear.x = 0.0;
+    vel.angular.z = ANGULAR_VELOCITY;
+    vel.linear.y = 0.0;
+    pub_vel_.publish(vel);
+
+    //time > 10s break
+    if((clock() - start) / CLOCKS_PER_SEC > 10) {
+      break;
+    }
+    return;
+  }
+}
 void Agent::updatePreferredVelocity()
 {
 
@@ -74,6 +90,11 @@ void Agent::updatePreferredVelocity()
   {
 
     current_path_.pop();
+    preferred_velocity_ = RVO::Vector2(0.0, 0.0);
+    if(goal_type_ == SURVEILLANCE) {
+      rotateInplace();
+    }
+    // turnInPlace();
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
     stopAgent();
     ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
@@ -162,6 +183,7 @@ void Agent::ppProcessLookahead(geometry_msgs::Transform current_pose)
     ROS_ERROR("[LT_CONTROLLER-%s]: No path to follow. Stopping agent.", &name_[0]);
   }
 }
+// If goal reached, ask robot to spin around once 
 
 bool Agent::checkifGoalReached()
 {
