@@ -59,7 +59,7 @@ void Agent::sendVelocity(RVO::Vector2 velo) {
 
   //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
-void turnInplace() {
+void Agent::rotateInPlace() {
   clock_t start = clock();
   
   while(1) {
@@ -74,8 +74,9 @@ void turnInplace() {
     if((clock() - start) / CLOCKS_PER_SEC > 10) {
       break;
     }
-    return;
+    ROS_WARN("Rotating in place");
   }
+  return;
 }
 void Agent::updatePreferredVelocity()
 {
@@ -92,7 +93,11 @@ void Agent::updatePreferredVelocity()
     current_path_.pop();
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
     if(goal_type_ == SURVEILLANCE) {
-      rotateInplace();
+      ROS_WARN("[SURVEILLANCE GOAL RECEIVED. ENTERING TURN IN PLACE MODE]");
+      rotateInPlace();
+    }
+    else {
+      ROS_WARN("[EXPLORATION GOAL RECEVIVED. STOPPING %s TO WAIT FOR NEXT GOAL]",&name_[0]);
     }
     // turnInPlace();
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);

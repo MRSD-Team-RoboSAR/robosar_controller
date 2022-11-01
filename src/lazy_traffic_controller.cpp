@@ -76,6 +76,7 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
                     path_queue.push(req.paths[i].poses[j]);
                 }
                 agent_map_[req.agent_names[i]].current_path_ = path_queue;
+                agent_map_[req.agent_names[i]].goal_type_ = req.goal_type[i];
             }
             else {
                 ROS_ERROR(" [LT_CONTROLLER] Empty path received for agent %s", &req.agent_names[i][0]);

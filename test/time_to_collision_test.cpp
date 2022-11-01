@@ -72,6 +72,7 @@ TEST(ObliqueCollision, ObliqueCollision){
     ASSERT_NE(RVO_INFTY, time);
     std::cout<<"Time to collision is "<<time<<std::endl;
 }
+
 // current position: 45.039467 : 9.643812, vel_a_t_b: -0.298092 : -0.262426, neigh pos: 44.489468 : 9.193812, radius: 0.300000
 TEST(BFSCollision, BFSCollision){
     

@@ -79,7 +79,7 @@ public:
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
     RVO::Vector2 rvo_velocity_;
-
+    int goal_type_ = -1;
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
@@ -112,7 +112,8 @@ private:
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
     std::vector<std::vector<int>> dir_;
     enum GOAL_TYPE {SURVEILLANCE, EXPLORE, HOME};
-    GOAL_TYPE goal_type_ = SURVEILLANCE;
+    // GOAL_TYPE goal_type_ = SURVEILLANCE;
+    void rotateInPlace(void);
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H
