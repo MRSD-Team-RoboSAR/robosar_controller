@@ -196,6 +196,7 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   if ((AreSame(preferred_velocity_.x(), 0.0) && AreSame(preferred_velocity_.y(), 0.0)) ||
        current_path_.empty()) {
     rvo_velocity_ = RVO::Vector2(0.0, 0.0);
+    flock_velocity_ = RVO::Vector2(0.0, 0.0);
     return;
   }
 
