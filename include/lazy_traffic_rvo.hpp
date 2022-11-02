@@ -16,6 +16,7 @@
 #define TIME_STEP (1) //frequence at which controller runs ( 1/ timestep)
 #define RVO_SAFETY_FACTOR (20.0f) //The safety factor of the agent (weight for penalizing candidate velocities - the higher the safety factor, the less 'aggressive' an agent is)
 #define RVO_INFTY (9e9f)
+#define REPULSION_DISTANCE (0.25) //Increasing this distance might help? Repulsion would kick in earlier!
 
 typedef std::pair<std::string, float> AgentDistPair;
 
@@ -25,6 +26,7 @@ typedef struct rvo_agent_obstacle_info {
   RVO::Vector2 preferred_velocity;
   RVO::Vector2 current_position;
   double max_vel;
+  float euc_distance;
 } rvo_agent_obstacle_info_s;
 
 
@@ -43,7 +45,7 @@ inline bool AreSame(double a, double b)
 
     //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
     RVO::Vector2 ba = p2 - p;
-    float sq_diam = sqr(radius);
+    float sq_diam = sqr(radius); // radius or diameter?? will be confusing while tuning
     float time;
 
     float discr = -sqr(det(v, ba)) + sq_diam * absSq(v);
@@ -165,5 +167,26 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
     return vel_computed;
 }
 
+// Function to compute velocity to repel from agents in repulsion zone
+inline RVO::Vector2 flockControlVelocity(rvo_agent_obstacle_info_s ego_agent_info,
+                                         const std::vector<rvo_agent_obstacle_info_s> &repulsion_zone_neighbors_list_, RVO::Vector2 velocity)
+{
+
+  RVO::Vector2 vel_computed = velocity;
+  RVO::Vector2 vel_repel;
+  const RVO::Vector2 ego_pos = ego_agent_info.current_position;
+  double max_vel = ego_agent_info.max_vel;
+  // iterate over neighbors
+  for (const auto &n : repulsion_zone_neighbors_list_)
+  {
+    ROS_INFO("[Flock Control] Agent: %s is inside respulsion zone of Agent :%s",n.agent_name.c_str(),ego_agent_info.agent_name.c_str());
+    RVO::Vector2 neigh_pos = n.current_position;
+    float euc_dist = n.euc_distance;
+    vel_repel = (1-euc_dist/REPULSION_DISTANCE)*((neigh_pos-ego_pos)/euc_dist)*(max_vel/2);
+    vel_computed -= vel_repel;
+  }
+
+  return vel_computed;
+}
 
 #endif // LAZY_TRAFFIC_RVO_H

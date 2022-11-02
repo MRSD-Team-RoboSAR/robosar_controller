@@ -27,7 +27,7 @@ typedef std::pair<std::string, float> AgentDistPair;
 using namespace std;
 
 #define MAX_NEIGHBORS (5) // Maximum number of neighbors to consider
-#define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
+#define MAX_NEIGH_DISTANCE (1.00) //Max distance among neighbors
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
@@ -79,6 +79,7 @@ public:
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
     RVO::Vector2 rvo_velocity_;
+    RVO::Vector2 flock_velocity_;
 
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
@@ -92,6 +93,7 @@ private:
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
     void publishVOVelocityMarker(void);
+    void publishFlockVelocityMarker(void);
     
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;
@@ -110,6 +112,7 @@ private:
 
     // Velocity obstacles related members
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
+    std::vector<rvo_agent_obstacle_info_s> repulsion_zone_neighbors_list_;
     std::vector<std::vector<int>> dir_;
 };
 

@@ -127,7 +127,8 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
             agent.second.updatePreferredVelocity();
             agent.second.invokeRVO(agent_map_, occupancy_grid_map_);
 
-            agent.second.sendVelocity(agent.second.rvo_velocity_);
+            // agent.second.sendVelocity(agent.second.rvo_velocity_);
+            agent.second.sendVelocity(agent.second.flock_velocity_);
             // Inform other subsystems of the controller status
             agent.second.publishStatus();
         }

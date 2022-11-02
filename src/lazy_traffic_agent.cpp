@@ -212,9 +212,13 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   // Calculate new velocity
   rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
 
+  //TODO - static agent handling?? if other agents are static and possibling colliding vo would take care of it?
+  flock_velocity_ = flockControlVelocity(my_info, repulsion_zone_neighbors_list_, rvo_velocity_);
   publishVOVelocityMarker();
+  publishFlockVelocityMarker();
   // Handle the calculated velocity
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
+  ROS_INFO("[LT_CONTROLLER-%s]: Flock Velo X: %f Y: %f", &name_[0], flock_velocity_.x(), flock_velocity_.y());
 }
 
 void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
@@ -313,6 +317,7 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
   priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
   RVO::Vector2 my_pose(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   neighbors_list_.clear();
+  repulsion_zone_neighbors_list_.clear();
 
   // Crop agents based on distance
   for (const auto &agent : agent_map) {
@@ -327,6 +332,18 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
 
     if (euc_distance < MAX_NEIGH_DISTANCE)
       all_neighbors.push(make_pair(neighbour_agent_name, euc_distance));
+
+    if (euc_distance < REPULSION_DISTANCE)
+    {
+      rvo_agent_obstacle_info_s neigh;
+      neigh.agent_name = neighbour_agent_name;
+      neigh.current_position = neigh_agent_pos;
+      neigh.currrent_velocity = agent.second.current_velocity_;
+      neigh.preferred_velocity = agent.second.preferred_velocity_;
+      neigh.max_vel = agent.second.v_max_;
+      neigh.euc_distance = euc_distance;
+      repulsion_zone_neighbors_list_.push_back(neigh);
+    }
   }
 
   // Crop agents based on max neighbours
@@ -400,6 +417,34 @@ void Agent::publishVOVelocityMarker(void) {
   vel_marker_.color.r = 0.0;
   vel_marker_.color.g = 0.0;
   vel_marker_.color.b = 1.0;
+
+  // Publish the marker
+  vel_marker_pub_.publish(vel_marker_);
+}
+
+void Agent::publishFlockVelocityMarker(void) {
+
+  // update marker and publish it on ROS
+  vel_marker_.header.stamp = ros::Time();
+  vel_marker_.id = vel_marker_.id + 1;
+  vel_marker_.pose.position.x = current_pose_.transform.translation.x;
+  vel_marker_.pose.position.y = current_pose_.transform.translation.y;
+  vel_marker_.pose.position.z = 0.0;
+
+  // Set the orientation from preferred velocity direction
+  double yaw = atan2(flock_velocity_.y(), flock_velocity_.x());
+  tf2::Matrix3x3 rot;
+  rot.setEulerYPR(yaw,0.0,0.0);
+  tf2::Quaternion quat;
+  rot.getRotation(quat);
+  vel_marker_.pose.orientation.x = quat.x();
+  vel_marker_.pose.orientation.y = quat.y();
+  vel_marker_.pose.orientation.z = quat.z();
+  vel_marker_.pose.orientation.w = quat.w();
+
+  vel_marker_.color.r = 0.0;
+  vel_marker_.color.g = 1.0;
+  vel_marker_.color.b = 0.0;
 
   // Publish the marker
   vel_marker_pub_.publish(vel_marker_);
