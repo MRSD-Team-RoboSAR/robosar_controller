@@ -179,6 +179,9 @@ inline RVO::Vector2 flockControlVelocity(rvo_agent_obstacle_info_s ego_agent_inf
   // iterate over neighbors
   for (const auto &n : repulsion_zone_neighbors_list_)
   {
+    //static neighbour agent handling - if other agents are static and possibling colliding vo would take care of it?
+    if ((AreSame(n.preferred_velocity.x(), 0.0) && AreSame(n.preferred_velocity.y(), 0.0)))
+      continue;
     ROS_INFO("[Flock Control] Agent: %s is inside respulsion zone of Agent :%s",n.agent_name.c_str(),ego_agent_info.agent_name.c_str());
     RVO::Vector2 neigh_pos = n.current_position;
     float euc_dist = n.euc_distance;
