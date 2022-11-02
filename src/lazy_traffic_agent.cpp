@@ -397,6 +397,10 @@ void Agent::publishPreferredVelocityMarker(void) {
 
 void Agent::publishVOVelocityMarker(void) {
 
+  // check if rvo velocity different from preferred velocity
+  if( AreSame(preferred_velocity_.x(), rvo_velocity_.x()) && AreSame(preferred_velocity_.y(), rvo_velocity_.y()) )
+    return;
+
   // update marker and publish it on ROS
   vel_marker_.header.stamp = ros::Time();
   vel_marker_.id = vel_marker_.id + 1;
@@ -424,6 +428,10 @@ void Agent::publishVOVelocityMarker(void) {
 }
 
 void Agent::publishFlockVelocityMarker(void) {
+
+  // check if flocking velocity different from rvo velocity
+  if( AreSame(flock_velocity_.x(), rvo_velocity_.x()) && AreSame(flock_velocity_.y(), rvo_velocity_.y()) )
+    return;
 
   // update marker and publish it on ROS
   vel_marker_.header.stamp = ros::Time();
