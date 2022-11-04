@@ -16,7 +16,7 @@
 #define TIME_STEP (1) //frequence at which controller runs ( 1/ timestep)
 #define RVO_SAFETY_FACTOR (20.0f) //The safety factor of the agent (weight for penalizing candidate velocities - the higher the safety factor, the less 'aggressive' an agent is)
 #define RVO_INFTY (9e9f)
-#define REPULSION_DISTANCE (3.0) //Increasing this distance might help? Repulsion would kick in earlier!
+#define REPULSION_DISTANCE (1.5) //Increasing this distance might help? Repulsion would kick in earlier!
 
 typedef std::pair<std::string, float> AgentDistPair;
 
@@ -121,8 +121,9 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
         // iterate over neighbors
         for(const auto& n: neighbors_list) {
 
-
-            // ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
+            ROS_INFO("[RVO - Neighbour] Agent: %s is neighbour of Agent :%s\n",n.agent_name.c_str(),ego_agent_info.agent_name.c_str());
+            ROS_INFO("[RVO - EgoAgent] %s %f %f // %f %f ", ego_agent_info.agent_name.c_str(), ego_agent_info.current_position.x(), ego_agent_info.current_position.y(), ego_agent_info.currrent_velocity.x(), ego_agent_info.currrent_velocity.y());
+            ROS_INFO("[RVO - Neighbour] %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
 
             // If neighbor is an obstacle, agent_Radius, position and other attributes would change
             // Change code accordingly
@@ -130,8 +131,11 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
             RVO::Vector2 vel_a_to_b;
             RVO::Vector2 vel_b = n.currrent_velocity;
             vel_a_to_b = vel_cand - vel_b;
+            ROS_INFO("[RVO - Vel Cand] %f %f", vel_cand.x(), vel_cand.y());
+            ROS_INFO("[RVO - vel_a_to_b] %f %f", vel_a_to_b.x(), vel_a_to_b.y());
             RVO::Vector2 neigh_pos = n.current_position;
             float time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
+            ROS_INFO("[RVO - TTC] Time to collision is: %f",time);
             if(is_collision)  {
                 t_to_collision = -std::ceil(time / TIME_STEP);
                 t_to_collision -= absSq(vel_cand) / (ego_agent_info.max_vel*ego_agent_info.max_vel);
@@ -148,9 +152,15 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
                     break;
             }
         }
+
         float penalty = RVO_SAFETY_FACTOR / min_t_to_collision + dist_to_pref_vel + dist_to_cur_vel;
+        ROS_INFO("[RVO CNV] Min time to collision is: %f",min_t_to_collision);
+        ROS_INFO("[RVO CNV] Distance to preferred velocity is: %f",dist_to_pref_vel);
+        ROS_INFO("[RVO CNV] Distance to current velocity is: %f",dist_to_cur_vel);
+        ROS_INFO("[RVO CNV] Penalty is: %f",penalty);
         if(penalty < min_penalty)
         {
+            ROS_INFO("[RVO CNV] Penalty is less than min penalty");
             min_penalty = penalty;
             vel_computed = vel_cand;
         }
@@ -179,27 +189,33 @@ inline RVO::Vector2 flockControlVelocity(rvo_agent_obstacle_info_s ego_agent_inf
   const RVO::Vector2 ego_pos = ego_agent_info.current_position;
   double max_vel = ego_agent_info.max_vel;
   // iterate over neighbors
-  // for (const auto &n : repulsion_zone_neighbors_list_)
-  // {
-  //   //static neighbour agent handling - if other agents are static and possibling colliding vo would take care of it?
-  //   // if ((AreSame(n.preferred_velocity.x(), 0.0) && AreSame(n.preferred_velocity.y(), 0.0)))
-  //   //   continue;
-  //   ROS_INFO("[Flock Control] Agent: %s is inside respulsion zone of Agent :%s",n.agent_name.c_str(),ego_agent_info.agent_name.c_str());
-  //   RVO::Vector2 neigh_pos = n.current_position;
-  //   float euc_dist = n.euc_distance;  
-  //   vel_repel = ((1-euc_dist/REPULSION_DISTANCE)*((neigh_pos-ego_pos)/euc_dist)*vel_unit)*vel_unit;
-  //   vel_computed -= vel_repel;
-  // }
+  //1. check out the time to collision function
+  //2. Else add some collision checking to this?
 
-  for(const auto &n: repulsion_zone_neighbors_list_){
+  //Implementation1
+  for (const auto &n : repulsion_zone_neighbors_list_)
+  {
+    //static neighbour agent handling - if other agents are static and possibling colliding vo would take care of it?
+    // if ((AreSame(n.preferred_velocity.x(), 0.0) && AreSame(n.preferred_velocity.y(), 0.0)))
+    //   continue;
     ROS_INFO("[Flock Control] Agent: %s is inside respulsion zone of Agent :%s",n.agent_name.c_str(),ego_agent_info.agent_name.c_str());
-    float k =0.02; //Need to tune this parameter
-    //If the neighbour is static, we do not add repulsion
-    if ((AreSame(n.preferred_velocity.x(), 0.0) && AreSame(n.preferred_velocity.y(), 0.0)))
-      continue;
-    dist_vect = ego_pos - n.current_position;
-    force_vect += (((k*dist_vect)/(n.euc_distance*n.euc_distance*n.euc_distance))*vel_unit)*vel_unit;
+    RVO::Vector2 neigh_pos = n.current_position;
+    float euc_dist = n.euc_distance;
+    vel_repel = (((1-euc_dist/REPULSION_DISTANCE)*((neigh_pos-ego_pos)/euc_dist)*(max_vel))*vel_unit)*vel_unit;
+    vel_computed -= vel_repel;
   }
+
+
+  //Implementation2
+  // for(const auto &n: repulsion_zone_neighbors_list_){
+  //   ROS_INFO("[Flock Control] Agent: %s is inside respulsion zone of Agent :%s",n.agent_name.c_str(),ego_agent_info.agent_name.c_str());
+  //   float k =0.02; //Need to tune this parameter
+  //   //If the neighbour is static, we do not add repulsion
+  //   // if ((AreSame(n.preferred_velocity.x(), 0.0) && AreSame(n.preferred_velocity.y(), 0.0)))
+  //     // continue;
+  //   dist_vect = ego_pos - n.current_position;
+  //   force_vect += (((k*dist_vect)/(n.euc_distance*n.euc_distance*n.euc_distance))*vel_unit)*vel_unit;
+  // }
   // if(force_vect * vel_unit > 0)
   // {
   //   // Same direction
@@ -209,8 +225,8 @@ inline RVO::Vector2 flockControlVelocity(rvo_agent_obstacle_info_s ego_agent_inf
   // {
   //   vel_computed *= 0.5;
   // }
-  vel_computed += force_vect;
-  return velocity;
+  // vel_computed += force_vect;
+  return vel_computed;
 }
 
 #endif // LAZY_TRAFFIC_RVO_H
