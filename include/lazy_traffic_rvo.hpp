@@ -11,8 +11,8 @@
 #include <ros/console.h>
 
 #define RVO_VELOCITY_SAMPLES (1000) //NUMBER OF SAMPLES PER EACH AGENT
-#define RVO_AGENT_RADIUS (0.2) // Radius of agent
-#define RVO_RADIUS_MULT_FACTOR (2) // since r1 + r2 = 2*r for RoboSAR, Define agent_radius and mult_factor for obstacle cone
+#define RVO_AGENT_RADIUS (0.15) // Radius of agent
+#define RVO_RADIUS_MULT_FACTOR (4) // since r1 + r2 = 2*r for RoboSAR, Define agent_radius and mult_factor for obstacle cone
 #define TIME_STEP (1) //frequence at which controller runs ( 1/ timestep)
 #define RVO_SAFETY_FACTOR (20.0f) //The safety factor of the agent (weight for penalizing candidate velocities - the higher the safety factor, the less 'aggressive' an agent is)
 #define RVO_INFTY (9e9f)
@@ -45,6 +45,10 @@ inline bool AreSame(double a, double b)
 
     //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
     RVO::Vector2 ba = p2 - p;
+
+    while(std::sqrt(absSq(ba))<= radius && radius/2 >= RVO_AGENT_RADIUS)
+      radius = radius/2;
+
     float sq_diam = sqr(radius); // radius or diameter?? will be confusing while tuning
     float time;
 
