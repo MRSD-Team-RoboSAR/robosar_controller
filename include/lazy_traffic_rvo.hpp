@@ -43,7 +43,11 @@ inline bool AreSame(double a, double b)
 
     //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
     RVO::Vector2 ba = p2 - p;
-    float sq_diam = sqr(radius);
+
+    while(std::sqrt(absSq(ba))<= radius && radius/2 >= RVO_AGENT_RADIUS)
+      radius = radius/2;
+
+    float sq_diam = sqr(radius); // radius or diameter?? will be confusing while tuning
     float time;
 
     float discr = -sqr(det(v, ba)) + sq_diam * absSq(v);
