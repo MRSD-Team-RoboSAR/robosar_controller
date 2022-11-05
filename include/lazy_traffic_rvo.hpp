@@ -124,8 +124,6 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
         for(const auto& n: neighbors_list) {
 
 
-            // ROS_INFO(" %s %f %f // %f %f ", n.agent_name.c_str(), n.current_position.x(), n.current_position.y(), n.currrent_velocity.x(), n.currrent_velocity.y());
-
             // If neighbor is an obstacle, agent_Radius, position and other attributes would change
             // Change code accordingly
             float t_to_collision; // time to collision with neighbor
