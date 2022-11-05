@@ -77,7 +77,6 @@ void Agent::updatePreferredVelocity()
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
     stopAgent();
     ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
-    ROS_INFO("[LT_CONTROLLER-%s] %f %f // %f %f ", &name_[0], current_pose_.transform.translation.x, current_pose_.transform.translation.y, current_velocity_.x(), current_velocity_.y());
 
     status.data = status.SUCCEEDED;
   }
@@ -220,8 +219,6 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   publishVOVelocityMarker();
   publishFlockVelocityMarker();
   // Handle the calculated velocity
-  ROS_INFO("[LT_CONTROLLER-%s]: Current Postition: %f Y: %f", &name_[0], current_position.x(), current_position.y());
-  ROS_INFO("[LT_CONTROLLER-%s]: Current Velo X: %f Y: %f", &name_[0], agent_map[name_].current_velocity_.x(), agent_map[name_].current_velocity_.y());
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
   ROS_INFO("[LT_CONTROLLER-%s]: Flock Velo X: %f Y: %f", &name_[0], flock_velocity_.x(), flock_velocity_.y());
 }
