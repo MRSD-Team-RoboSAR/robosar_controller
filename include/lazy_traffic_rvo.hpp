@@ -39,14 +39,26 @@ inline bool AreSame(double a, double b)
     return fabs(a - b) < std::numeric_limits<double>::epsilon();
 }
 
+//Check if float values are greater than or equal to each other
+inline bool AreSameOrGreater(double a, double b)
+{
+    return (a > b) || AreSame(a, b);
+}
+
+//Check if float values are less than or equal to each other
+inline bool AreSameOrLess(double a, double b)
+{
+    return (a < b) || AreSame(a, b);
+}
+
 //Function to compute if agent is in collision
   inline float rvoTimeToCollision(const RVO::Vector2& p, const RVO::Vector2& v,
                          const RVO::Vector2& p2, float radius, bool collision) {
 
     //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
     RVO::Vector2 ba = p2 - p;
-
-    while(std::sqrt(absSq(ba))<= radius && radius/2 >= RVO_AGENT_RADIUS)
+    float relative_position = std::sqrt(absSq(ba));
+    while(AreSameOrLess(relative_position,radius) && AreSameOrGreater(radius/2,RVO_AGENT_RADIUS))
       radius = radius/2;
 
     float sq_diam = sqr(radius); // radius or diameter?? will be confusing while tuning

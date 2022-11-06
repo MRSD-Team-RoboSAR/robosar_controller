@@ -27,7 +27,7 @@ typedef std::pair<std::string, float> AgentDistPair;
 using namespace std;
 
 #define MAX_NEIGHBORS (5) // Maximum number of neighbors to consider
-#define MAX_NEIGH_DISTANCE (5.00) //Max distance among neighbors
+#define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
