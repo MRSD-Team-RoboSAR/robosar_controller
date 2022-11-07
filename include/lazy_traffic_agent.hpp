@@ -31,7 +31,7 @@ using namespace std;
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
-#define ANGULAR_VELOCITY (0.5)
+#define ANGULAR_VELOCITY (0.7)
 class Agent {
 
 public:
@@ -79,7 +79,7 @@ public:
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
     RVO::Vector2 rvo_velocity_;
-    int goal_type_ = -1;
+    int goal_type_ = 0;
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
@@ -114,6 +114,23 @@ private:
     enum GOAL_TYPE {SURVEILLANCE, EXPLORE, HOME};
     // GOAL_TYPE goal_type_ = SURVEILLANCE;
     void rotateInPlace(void);
+    int rot_count_ = 0;
+    bool rot_completed_ = false;
+    int pause_count_ = 0;
+    int agent_state_ = TRACKING;
+    int search_phase_ = -1;
+    enum AGENT_STATE {
+        TRACKING,
+        ROTATION,
+        SEARCHING,
+        ROTATION_COMPLETED,
+        GOAL_REACHED
+    };
+    enum SEARCH_PHASE {
+        PHASE_1,
+        PHASE_2,
+        PHASE_3
+    };
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H

@@ -71,12 +71,29 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
             }
             // Parse path and update agent map
             if(req.paths[i].poses.size() > 0) {
+                agent_map_[req.agent_names[i]].goal_type_ = 0;
                 std::queue<geometry_msgs::PoseStamped> path_queue;
                 for(int j = 0; j < req.paths[i].poses.size(); j++) {
                     path_queue.push(req.paths[i].poses[j]);
+                    // if(req.goal_type[i]==0 && j==req.paths[i].poses.size()-1) {
+                    //     ROS_WARN_STREAM("Entered end of path condition. adding rotation goal \n");
+                    //     for(int n=0;n<NUMBER_OF_PAUSES;n++) {
+                    //         ROS_INFO("Adding rotation to path \n");
+                    //         geometry_msgs::PoseStamped search_pose;
+                    //         search_pose.pose.position.x = req.paths[i].poses[j].pose.position.x;
+                    //         search_pose.pose.position.y = req.paths[i].poses[j].pose.position.y;
+                    //         search_pose.pose.orientation.w = 0.0;
+                    //         search_pose.pose.orientation.x = 0.0; 
+                    //         search_pose.pose.orientation.y = 0.8604998;
+                    //         search_pose.pose.orientation.z = 0.5094507;
+                            
+                    //         path_queue.push(search_pose);
+                    //     }
+                    // }
                 }
                 agent_map_[req.agent_names[i]].current_path_ = path_queue;
-                agent_map_[req.agent_names[i]].goal_type_ = req.goal_type[i];
+                
+                
             }
             else {
                 ROS_ERROR(" [LT_CONTROLLER] Empty path received for agent %s", &req.agent_names[i][0]);

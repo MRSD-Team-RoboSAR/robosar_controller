@@ -6,8 +6,7 @@
 #define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 #define CONTROL_ANGLE_THRESHOLD_INIT (0.17) //10 degrees
 #define USE_STATE_MACHINE (true)
-void Agent::stopAgent(void)
-{
+void Agent::stopAgent(void) {
   // TODO Check if velocity is non zero
   geometry_msgs::Twist vel;
   vel.linear.x = 0.0;
@@ -60,9 +59,9 @@ void Agent::sendVelocity(RVO::Vector2 velo) {
   //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
 void Agent::rotateInPlace() {
-  clock_t start = clock();
+    clock_t start = clock();
   
-  while(1) {
+
 
     geometry_msgs::Twist vel;
     vel.linear.x = 0.0;
@@ -71,13 +70,13 @@ void Agent::rotateInPlace() {
     pub_vel_.publish(vel);
 
     //time > 10s break
-    if((clock() - start) / CLOCKS_PER_SEC > 10) {
-      break;
-    }
+    // if((clock() - start) / CLOCKS_PER_SEC > 10) {
+    //   break;
+
     ROS_WARN("Rotating in place");
+    return;
   }
-  return;
-}
+
 void Agent::updatePreferredVelocity()
 {
 
@@ -87,23 +86,63 @@ void Agent::updatePreferredVelocity()
     // stopAgent();
     // return;
   }
-  else if (current_path_.size() == 1 && checkifGoalReached())
-  {
+  else if (current_path_.size() == 1 && checkifGoalReached()) {
 
-    current_path_.pop();
+    
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
-    if(goal_type_ == SURVEILLANCE) {
+    if(goal_type_ == SURVEILLANCE && agent_state_!=ROTATION_COMPLETED) {
+      
       ROS_WARN("[SURVEILLANCE GOAL RECEIVED. ENTERING TURN IN PLACE MODE]");
-      rotateInPlace();
+      
+      agent_state_ = ROTATION;
+      if(rot_count_==4 && search_phase_ == PHASE_3 && agent_state_==ROTATION) {
+        rot_count_ = 0;
+        agent_state_ = ROTATION_COMPLETED;
+      }
+      else if(agent_state_ == ROTATION) {
+        
+        if(rot_count_==4 && search_phase_!=PHASE_3) {
+         
+          agent_state_ = SEARCHING;
+          rot_count_ = 0;
+          if(search_phase_==-1) search_phase_ = PHASE_1;
+          else if (search_phase_==PHASE_1) search_phase_ = PHASE_2;
+          else search_phase_ = PHASE_3;
+          pause_count_++;
+          stopAgent();
+        }
+        else{
+          rot_count_++;
+          rotateInPlace();
+        }
+      }
+      else if(agent_state_ == SEARCHING && pause_count_==1) {
+        stopAgent();
+        pause_count_=0;
+        agent_state_ = ROTATION;
+      }
+      else {
+        ROS_WARN("UNIDENTIED AGENT STATE: %d \n",agent_state_);
+      }
     }
-    else {
+    else if (goal_type_ == SURVEILLANCE && agent_state_ == ROTATION_COMPLETED) {
+      ROS_WARN(" AGENT STATE: %d \n",agent_state_);
+      current_path_.pop();
+      preferred_velocity_ = RVO::Vector2(0.0, 0.0);
+      stopAgent();
+      ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
+      status.data = status.SUCCEEDED;
+    }
+    else if(goal_type_ != SURVEILLANCE) {
+      current_path_.pop();
       ROS_WARN("[EXPLORATION GOAL RECEVIVED. STOPPING %s TO WAIT FOR NEXT GOAL]",&name_[0]);
+      preferred_velocity_ = RVO::Vector2(0.0, 0.0);
+      stopAgent();
+      ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
+      status.data = status.SUCCEEDED;
     }
     // turnInPlace();
-    preferred_velocity_ = RVO::Vector2(0.0, 0.0);
-    stopAgent();
-    ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
-    status.data = status.SUCCEEDED;
+   
   }
   else
   {
