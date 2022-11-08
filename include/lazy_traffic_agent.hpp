@@ -28,6 +28,7 @@ using namespace std;
 
 #define MAX_NEIGHBORS (5) // Maximum number of neighbors to consider
 #define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
+#define REPULSION_RADIUS (0.3f) //Repulsion radius
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
@@ -84,7 +85,7 @@ private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
-    void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
+    bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
     void staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
                             const int& map_width, const int& map_height, 
