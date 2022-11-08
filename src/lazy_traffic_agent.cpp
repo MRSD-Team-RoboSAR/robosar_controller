@@ -198,7 +198,6 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
     rvo_velocity_ = RVO::Vector2(0.0, 0.0);
     return;
   }
-
   bool isCollision = false;
   // Calculate dynamic and static neighbours
   isCollision = computeNearestNeighbors(agent_map);
@@ -211,7 +210,12 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   //ROS_INFO("[LT_CONTROLLER-%s]: Neighbours: %ld", &name_[0], neighbors_list_.size());
 
   // Calculate new velocity
-  rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
+  if(!isCollision) {
+    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
+  } else {
+    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
+    rvo_velocity_ = flockControlVelocity(my_info, repulsion_list_, rvo_velocity_);
+  }
 
   publishVOVelocityMarker(isCollision);
   // Handle the calculated velocity
@@ -313,8 +317,10 @@ bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
 {
   bool result = false;
   priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
+  std::vector<std::string> repulsion_neighbours;
   RVO::Vector2 my_pose(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   neighbors_list_.clear();
+  repulsion_list_.clear();
 
   // Crop agents based on distance
   for (const auto &agent : agent_map) {
@@ -328,6 +334,7 @@ bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     float euc_distance = euclidean_dist(neigh_agent_pos, my_pose);
     if(euc_distance < REPULSION_RADIUS) {
       result = true;
+      repulsion_neighbours.push_back(neighbour_agent_name);
     }
     if (euc_distance < MAX_NEIGH_DISTANCE)
       all_neighbors.push(make_pair(neighbour_agent_name, euc_distance));
@@ -350,6 +357,20 @@ bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     neigh.preferred_velocity = agent_map[neigh.agent_name].preferred_velocity_;
     neigh.max_vel = agent_map[neigh.agent_name].v_max_;
     neighbors_list_.push_back(neigh);
+  }
+
+  for(int i=0;i<repulsion_neighbours.size();i++) {
+    rvo_agent_obstacle_info_s neigh;
+    neigh.agent_name = repulsion_neighbours[i];
+    if(agent_map[neigh.agent_name].at_rest)
+      continue;
+    RVO::Vector2 neigh_agent_pos(agent_map[neigh.agent_name].current_pose_.transform.translation.x,
+                                  agent_map[neigh.agent_name].current_pose_.transform.translation.y);
+    neigh.current_position = neigh_agent_pos;
+    neigh.currrent_velocity = agent_map[neigh.agent_name].current_velocity_;
+    neigh.preferred_velocity = agent_map[neigh.agent_name].preferred_velocity_;
+    neigh.max_vel = agent_map[neigh.agent_name].v_max_;
+    repulsion_list_.push_back(neigh);
   }
 
   return result;

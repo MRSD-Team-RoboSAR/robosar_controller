@@ -25,6 +25,7 @@ typedef struct rvo_agent_obstacle_info {
   RVO::Vector2 preferred_velocity;
   RVO::Vector2 current_position;
   double max_vel;
+
 } rvo_agent_obstacle_info_s;
 
 
@@ -56,7 +57,7 @@ inline bool AreSameOrLess(double a, double b)
     //ROS_INFO(" RVO received p1: %f, %f, p2: %f, %f, v: %f, %f r:%f", p.x(), p.y(), p2.x(), p2.y(), v.x(), v.y(),radius);
     RVO::Vector2 ba = p2 - p;
     float relative_position = std::sqrt(absSq(ba));
-    while(AreSameOrLess(relative_position,radius) && AreSameOrGreater(radius/2,RVO_AGENT_RADIUS))
+    while(AreSameOrLess(relative_position,radius))// && AreSameOrGreater(radius/2,RVO_AGENT_RADIUS))
       radius = radius/2;
 
     float sq_diam = sqr(radius); // radius or diameter?? will be confusing while tuning
@@ -179,5 +180,24 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
     return vel_computed;
 }
 
+inline RVO::Vector2 flockControlVelocity(rvo_agent_obstacle_info_s ego_agent_info,
+                                         const std::vector<rvo_agent_obstacle_info_s>& repulsion_list, RVO::Vector2& rvo_velocity)
+{
+  RVO::Vector2 vel_computed;
+  RVO::Vector2 dist_vect;
+  const RVO::Vector2 ego_pos = ego_agent_info.current_position;
+
+  for (const auto &n : repulsion_list)
+  {
+    dist_vect = ego_pos - n.current_position;
+    vel_computed += dist_vect; //TODO: Repulsion inversely proportional to distance?
+  }
+  if(!repulsion_list.empty()) {
+    vel_computed = norm(vel_computed)*ego_agent_info.max_vel/2;
+    return vel_computed + rvo_velocity;
+  }
+  else
+    return rvo_velocity;
+}
 
 #endif // LAZY_TRAFFIC_RVO_H
