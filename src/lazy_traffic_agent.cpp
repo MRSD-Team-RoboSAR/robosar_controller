@@ -77,10 +77,6 @@ void Agent::updatePreferredVelocity()
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
     stopAgent();
     ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
-<<<<<<< HEAD
-=======
-
->>>>>>> 6586ca1... removed debugging msgs
     status.data = status.SUCCEEDED;
   }
   else
