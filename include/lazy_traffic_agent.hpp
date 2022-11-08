@@ -92,7 +92,7 @@ private:
                             const float& map_resolution,const geometry_msgs::Point& map_origin);
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
-    void publishVOVelocityMarker(void);
+    void publishVOVelocityMarker(bool flag);
     
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;

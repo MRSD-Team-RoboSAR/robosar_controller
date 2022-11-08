@@ -199,8 +199,9 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
     return;
   }
 
+  bool isCollision = false;
   // Calculate dynamic and static neighbours
-  computeNearestNeighbors(agent_map);
+  isCollision = computeNearestNeighbors(agent_map);
   computeStaticObstacles(ocm);
 
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
@@ -212,7 +213,7 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   // Calculate new velocity
   rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
 
-  publishVOVelocityMarker();
+  publishVOVelocityMarker(isCollision);
   // Handle the calculated velocity
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
@@ -382,7 +383,7 @@ void Agent::publishPreferredVelocityMarker(void) {
   vel_marker_pub_.publish(vel_marker_);
 }
 
-void Agent::publishVOVelocityMarker(void) {
+void Agent::publishVOVelocityMarker(bool flag) {
 
   // update marker and publish it on ROS
   vel_marker_.header.stamp = ros::Time();
@@ -402,9 +403,15 @@ void Agent::publishVOVelocityMarker(void) {
   vel_marker_.pose.orientation.z = quat.z();
   vel_marker_.pose.orientation.w = quat.w();
 
-  vel_marker_.color.r = 0.0;
-  vel_marker_.color.g = 0.0;
-  vel_marker_.color.b = 1.0;
+  if(flag) {
+    vel_marker_.color.r = 0.0;
+    vel_marker_.color.g = 1.0;
+    vel_marker_.color.b = 0.0;
+  } else {
+    vel_marker_.color.r = 0.0;
+    vel_marker_.color.g = 0.0;
+    vel_marker_.color.b = 1.0;
+  }
 
   // Publish the marker
   vel_marker_pub_.publish(vel_marker_);
