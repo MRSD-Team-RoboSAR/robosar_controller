@@ -23,7 +23,7 @@ int main(int argc, char **argv)
   pose2.header.frame_id = "map";
   pose2.pose.position.x = 46.5;
   pose2.pose.position.y = 10.0;
-  traj_2.push_back(pose2);
+  traj.push_back(pose2);
   // geometry_msgs::PoseStamped pose3;
   // pose3.header.seq=0;
   // pose3.header.stamp = ros::Time::now();
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
       path_agent.poses.push_back(pose);
   srv.request.paths.push_back(path_agent);
   srv.request.agent_names.push_back("agent_0");
-  srv.request.agent_names.push_back("agent_1");
+  // srv.request.agent_names.push_back("agent_1");
   srv.request.goal_type.push_back(0);
   ros::ServiceClient controller_client = nh_.serviceClient<robosar_messages::robosar_controller>("robosar_controller/lazy_traffic_controller");
 

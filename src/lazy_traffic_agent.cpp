@@ -66,6 +66,8 @@ void Agent::rotateInPlace() {
     geometry_msgs::Twist vel;
     vel.linear.x = 0.0;
     vel.angular.z = ANGULAR_VELOCITY;
+    // vel.angular.x = 0.0;
+    // vel.angular.y = 0.0;
     vel.linear.y = 0.0;
     pub_vel_.publish(vel);
 
