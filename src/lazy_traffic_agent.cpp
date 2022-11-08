@@ -44,7 +44,7 @@ void Agent::sendVelocity(RVO::Vector2 velo)
   // Calculate cross product
   double cross_product = heading.x() * velo_norm.y() - heading.y() * velo_norm.x();
   // Calculate dot product
-  vel.angular.z = acos(getCurrentHeading() * velo_norm);
+  vel.angular.z = acos(heading * velo_norm);
 
   // Map linear velocity based on error in angular velocity
   vel.linear.x = 0.0 + v_max_ * (1.0 - fabs(vel.angular.z) / CONTROL_ANGLE_THRESHOLD);
@@ -187,6 +187,7 @@ RVO::Vector2 Agent::getCurrentHeading()
 
   // Convert to unit vector
   RVO::Vector2 heading(cos(yaw), sin(yaw));
+  myheading_ = heading;
   return heading;
 }
 
@@ -218,6 +219,7 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   }
 
   publishVOVelocityMarker(isCollision);
+  publishHeading();
   // Handle the calculated velocity
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
@@ -272,6 +274,7 @@ void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_
       obs.current_position = obs_pos;
       obs.currrent_velocity = RVO::Vector2(0.0,0.0);
       neighbors_list_.push_back(obs);
+      // repulsion_list_.push_back(obs); // TODO : Will the other agents at home be considered obstacles?
     }
 
     //expand node
@@ -362,7 +365,7 @@ bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
   for(int i=0;i<repulsion_neighbours.size();i++) {
     rvo_agent_obstacle_info_s neigh;
     neigh.agent_name = repulsion_neighbours[i];
-    if(agent_map[neigh.agent_name].at_rest)
+    if(AreSame(agent_map[neigh.agent_name].preferred_velocity_.x(),0.0) && AreSame(agent_map[neigh.agent_name].preferred_velocity_.y(),0.0))
       continue;
     RVO::Vector2 neigh_agent_pos(agent_map[neigh.agent_name].current_pose_.transform.translation.x,
                                   agent_map[neigh.agent_name].current_pose_.transform.translation.y);
@@ -433,6 +436,34 @@ void Agent::publishVOVelocityMarker(bool flag) {
     vel_marker_.color.g = 0.0;
     vel_marker_.color.b = 1.0;
   }
+
+  // Publish the marker
+  vel_marker_pub_.publish(vel_marker_);
+}
+
+void Agent::publishHeading() {
+
+  // update marker and publish it on ROS
+  vel_marker_.header.stamp = ros::Time();
+  vel_marker_.id = vel_marker_.id + 1;
+  vel_marker_.pose.position.x = current_pose_.transform.translation.x;
+  vel_marker_.pose.position.y = current_pose_.transform.translation.y;
+  vel_marker_.pose.position.z = 0.0;
+
+  // Set the orientation from preferred velocity direction
+  double yaw = atan2(myheading_.y(), myheading_.x());
+  tf2::Matrix3x3 rot;
+  rot.setEulerYPR(yaw,0.0,0.0);
+  tf2::Quaternion quat;
+  rot.getRotation(quat);
+  vel_marker_.pose.orientation.x = quat.x();
+  vel_marker_.pose.orientation.y = quat.y();
+  vel_marker_.pose.orientation.z = quat.z();
+  vel_marker_.pose.orientation.w = quat.w();
+
+    vel_marker_.color.r = 1.0;
+    vel_marker_.color.g = 1.0;
+    vel_marker_.color.b = 0.0;
 
   // Publish the marker
   vel_marker_pub_.publish(vel_marker_);

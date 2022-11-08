@@ -30,7 +30,7 @@ using namespace std;
 #define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
 #define REPULSION_RADIUS (0.5f) //Repulsion radius
 #define COLLISION_THRESH (50) // Collision threshold
-#define USE_STATIC_OBSTACLE_AVOIDANCE (1)
+#define USE_STATIC_OBSTACLE_AVOIDANCE (0)
 #define MAX_STATIC_OBS_DIST (0.5)
 
 class Agent {
@@ -80,6 +80,7 @@ public:
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
     RVO::Vector2 rvo_velocity_;
+    RVO::Vector2 myheading_;
     bool at_rest;
 
 private:
@@ -94,6 +95,7 @@ private:
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
     void publishVOVelocityMarker(bool flag);
+    void publishHeading(void);
     
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;
