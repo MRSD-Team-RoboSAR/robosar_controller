@@ -308,8 +308,9 @@ void Agent::computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map) {
   staticObstacleBfs(current_position, map_data, map_width, map_height, map_resolution, map_origin);
 
 }
-void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
+bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
 {
+  bool result = false;
   priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
   RVO::Vector2 my_pose(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   neighbors_list_.clear();
@@ -324,7 +325,9 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     RVO::Vector2 neigh_agent_pos(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
     string neighbour_agent_name = agent.first;
     float euc_distance = euclidean_dist(neigh_agent_pos, my_pose);
-
+    if(euc_distance < REPULSION_RADIUS) {
+      result = true;
+    }
     if (euc_distance < MAX_NEIGH_DISTANCE)
       all_neighbors.push(make_pair(neighbour_agent_name, euc_distance));
   }
@@ -347,6 +350,8 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     neigh.max_vel = agent_map[neigh.agent_name].v_max_;
     neighbors_list_.push_back(neigh);
   }
+
+  return result;
 }
 
 void Agent::publishPreferredVelocityMarker(void) {
