@@ -103,12 +103,12 @@ void Agent::updatePreferredVelocity()
       }
       else if(agent_state_ == ROTATION) {
         
-        if(rot_count_==4 && search_phase_!=PHASE_3) {
-         
+        if(rot_count_==4) {
           agent_state_ = SEARCHING;
           rot_count_ = 0;
           if(search_phase_==-1) search_phase_ = PHASE_1;
           else if (search_phase_==PHASE_1) search_phase_ = PHASE_2;
+          else if (search_phase_==PHASE_3) search_phase_ = -1;
           else search_phase_ = PHASE_3;
           pause_count_++;
           stopAgent();
@@ -134,6 +134,7 @@ void Agent::updatePreferredVelocity()
       stopAgent();
       ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
       status.data = status.SUCCEEDED;
+      agent_state_ =   TRACKING;
     }
     else if(goal_type_ != SURVEILLANCE) {
       current_path_.pop();
