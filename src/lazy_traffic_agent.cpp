@@ -100,18 +100,18 @@ void Agent::updatePreferredVelocity()
       if(rot_count_==4 && search_phase_ == PHASE_3 && agent_state_==ROTATION) {
         rot_count_ = 0;
         agent_state_ = ROTATION_COMPLETED;
+        search_phase_ = -1;
       }
       else if(agent_state_ == ROTATION) {
-        
         if(rot_count_==4) {
           agent_state_ = SEARCHING;
           rot_count_ = 0;
           if(search_phase_==-1) search_phase_ = PHASE_1;
           else if (search_phase_==PHASE_1) search_phase_ = PHASE_2;
-          else if (search_phase_==PHASE_3) search_phase_ = -1;
           else search_phase_ = PHASE_3;
           pause_count_++;
           stopAgent();
+          ROS_WARN("[%s AGENT STATE: %d, SEARCH PHASE: %d\n",&name_[0], agent_state_, search_phase_);
         }
         else{
           rot_count_++;
