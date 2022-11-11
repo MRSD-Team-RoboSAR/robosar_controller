@@ -31,7 +31,8 @@ using namespace std;
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
-#define ANGULAR_VELOCITY (0.7)
+
+#define SEARCH_ANGULAR_VELOCITY (0.7)
 class Agent {
 
 public:
@@ -79,6 +80,14 @@ public:
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
     RVO::Vector2 rvo_velocity_;
+
+    enum GOAL_TYPE 
+    {   
+        SURVEILLANCE,
+        EXPLORE, 
+        HOME
+    };
+
     int goal_type_ = 0;
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
@@ -111,8 +120,7 @@ private:
     // Velocity obstacles related members
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
     std::vector<std::vector<int>> dir_;
-    enum GOAL_TYPE {SURVEILLANCE, EXPLORE, HOME};
-    // GOAL_TYPE goal_type_ = SURVEILLANCE;
+
     void rotateInPlace(void);
     int rot_count_ = 0;
     bool rot_completed_ = false;

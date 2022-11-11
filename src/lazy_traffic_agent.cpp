@@ -65,7 +65,7 @@ void Agent::rotateInPlace() {
 
     geometry_msgs::Twist vel;
     vel.linear.x = 0.0;
-    vel.angular.z = ANGULAR_VELOCITY;
+    vel.angular.z = SEARCH_ANGULAR_VELOCITY;
     // vel.angular.x = 0.0;
     // vel.angular.y = 0.0;
     vel.linear.y = 0.0;
@@ -83,7 +83,7 @@ void Agent::updatePreferredVelocity()
 {
 
   if (current_path_.empty())
-  {
+ {
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
     // stopAgent();
     // return;
