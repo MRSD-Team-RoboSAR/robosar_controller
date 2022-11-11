@@ -200,4 +200,24 @@ inline RVO::Vector2 flockControlVelocity(rvo_agent_obstacle_info_s ego_agent_inf
     return rvo_velocity;
 }
 
+inline RVO::Vector2 flockControlVelocity_weighted(rvo_agent_obstacle_info_s ego_agent_info,
+                                         const std::vector<rvo_agent_obstacle_info_s>& repulsion_list, RVO::Vector2& rvo_velocity)
+{
+  RVO::Vector2 vel_computed;
+  RVO::Vector2 dist_vect;
+  const RVO::Vector2 ego_pos = ego_agent_info.current_position;
+
+  for (const auto &n : repulsion_list)
+  {
+    dist_vect = ego_pos - n.current_position;
+    //vel_computed += dist_vect; //larger the distance, larger the addition in repulsion, doesn't make sense
+    vel_computed += (1-abs(dist_vect)/0.5f)*norm(dist_vect);
+  }
+  if(!repulsion_list.empty()) {
+    vel_computed = norm(vel_computed)*ego_agent_info.max_vel/2;
+    return vel_computed + rvo_velocity;
+  }
+  else
+    return rvo_velocity;
+}
 #endif // LAZY_TRAFFIC_RVO_H

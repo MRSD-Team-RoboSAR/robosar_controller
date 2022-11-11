@@ -215,7 +215,7 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
     rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
   } else {
     rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
-    rvo_velocity_ = flockControlVelocity(my_info, repulsion_list_, rvo_velocity_);
+    rvo_velocity_ = flockControlVelocity_weighted(my_info, repulsion_list_, rvo_velocity_);
   }
 
   publishVOVelocityMarker(isCollision);
@@ -336,8 +336,11 @@ bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     string neighbour_agent_name = agent.first;
     float euc_distance = euclidean_dist(neigh_agent_pos, my_pose);
     if(euc_distance < REPULSION_RADIUS) {
-      result = true;
-      repulsion_neighbours.push_back(neighbour_agent_name);
+      if(!(AreSame(agent_map[neighbour_agent_name].preferred_velocity_.x(),0.0) &&
+         AreSame(agent_map[neighbour_agent_name].preferred_velocity_.y(),0.0))) {
+        result = true;
+        repulsion_neighbours.push_back(neighbour_agent_name);
+      }
     }
     if (euc_distance < MAX_NEIGH_DISTANCE)
       all_neighbors.push(make_pair(neighbour_agent_name, euc_distance));
