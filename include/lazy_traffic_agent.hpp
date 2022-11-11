@@ -21,6 +21,7 @@
 
 #include "Vector2.h"
 #include "lazy_traffic_rvo.hpp"
+#include "robosar_messages/task_graph_getter.h"
 
 typedef std::pair<std::string, float> AgentDistPair;
 
@@ -33,6 +34,9 @@ using namespace std;
 #define MAX_STATIC_OBS_DIST (0.5)
 
 #define SEARCH_ANGULAR_VELOCITY (0.7)
+#define SEARCH_PAUSE_TIMESTEPS (2)
+#define SEARCH_ROTATION_TIMESTEPS (15)
+#define SEARCH_NUM_ROTATIONS (3)
 class Agent {
 
 public:

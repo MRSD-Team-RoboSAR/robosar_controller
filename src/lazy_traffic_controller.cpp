@@ -2,7 +2,6 @@
 
 #include "lazy_traffic_controller.hpp"
 #include "robosar_messages/agent_status.h"
-#include "robosar_messages/task_graph_getter.h"
 
 
 LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),

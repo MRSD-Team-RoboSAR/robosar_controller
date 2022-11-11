@@ -59,10 +59,7 @@ void Agent::sendVelocity(RVO::Vector2 velo) {
   //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
 void Agent::rotateInPlace() {
-    clock_t start = clock();
   
-
-
     geometry_msgs::Twist vel;
     vel.linear.x = 0.0;
     vel.angular.z = SEARCH_ANGULAR_VELOCITY;
@@ -70,13 +67,7 @@ void Agent::rotateInPlace() {
     // vel.angular.y = 0.0;
     vel.linear.y = 0.0;
     pub_vel_.publish(vel);
-
-    //time > 10s break
-    // if((clock() - start) / CLOCKS_PER_SEC > 10) {
-    //   break;
-
-    ROS_WARN("Rotating in place");
-    return;
+    ROS_DEBUG("Rotating in place");
   }
 
 void Agent::updatePreferredVelocity()
@@ -92,43 +83,43 @@ void Agent::updatePreferredVelocity()
 
     
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
-    if(goal_type_ == SURVEILLANCE && agent_state_!=ROTATION_COMPLETED) {
+    if(goal_type_ == robosar_messages::task_graph_getter::Response::COVERAGE && agent_state_!=ROTATION_COMPLETED) {
       
-      ROS_WARN("[SURVEILLANCE GOAL RECEIVED. ENTERING TURN IN PLACE MODE]");
-      
-      agent_state_ = ROTATION;
-      if(rot_count_==4 && search_phase_ == PHASE_3 && agent_state_==ROTATION) {
-        rot_count_ = 0;
-        agent_state_ = ROTATION_COMPLETED;
-        search_phase_ = -1;
-      }
-      else if(agent_state_ == ROTATION) {
-        if(rot_count_==4) {
-          agent_state_ = SEARCHING;
+      switch (agent_state_)
+      {
+        case TRACKING:
+          ROS_WARN("[LT_CONTROLLER-%s] Coverage goal received, entering turn in place! ", &name_[0]);
+          agent_state_ = ROTATION;
           rot_count_ = 0;
-          if(search_phase_==-1) search_phase_ = PHASE_1;
-          else if (search_phase_==PHASE_1) search_phase_ = PHASE_2;
-          else search_phase_ = PHASE_3;
-          pause_count_++;
-          stopAgent();
-          ROS_WARN("[%s AGENT STATE: %d, SEARCH PHASE: %d\n",&name_[0], agent_state_, search_phase_);
-        }
-        else{
-          rot_count_++;
+          pause_count_ = 0;
+        case ROTATION:
           rotateInPlace();
-        }
+          rot_count_++;
+          ROS_WARN("[LT_CONTROLLER-%s] Search task in rotation state %d ", &name_[0],rot_count_);
+          if(rot_count_ == SEARCH_ROTATION_TIMESTEPS*SEARCH_NUM_ROTATIONS){
+            agent_state_ = ROTATION_COMPLETED;
+          }
+          else if(rot_count_%SEARCH_ROTATION_TIMESTEPS==0)
+          {
+            agent_state_ = SEARCHING;
+          }
+          break;
+        case SEARCHING:
+          stopAgent();
+          pause_count_++;
+          ROS_WARN("[LT_CONTROLLER-%s] ________________________________", &name_[0]);
+          if(pause_count_==SEARCH_PAUSE_TIMESTEPS )
+          {
+            agent_state_ = ROTATION;
+            pause_count_ = 0;
+          }
+          break;
+        default:
+          ROS_ERROR("Invalid state %d", agent_state_);
       }
-      else if(agent_state_ == SEARCHING && pause_count_==1) {
-        stopAgent();
-        pause_count_=0;
-        agent_state_ = ROTATION;
-      }
-      else {
-        ROS_WARN("UNIDENTIED AGENT STATE: %d \n",agent_state_);
-      }
+     
     }
-    else if (goal_type_ == SURVEILLANCE && agent_state_ == ROTATION_COMPLETED) {
-      ROS_WARN(" AGENT STATE: %d \n",agent_state_);
+    else if(goal_type_ != robosar_messages::task_graph_getter::Response::COVERAGE || agent_state_ == ROTATION_COMPLETED) {
       current_path_.pop();
       preferred_velocity_ = RVO::Vector2(0.0, 0.0);
       stopAgent();
@@ -136,15 +127,9 @@ void Agent::updatePreferredVelocity()
       status.data = status.SUCCEEDED;
       agent_state_ =   TRACKING;
     }
-    else if(goal_type_ != SURVEILLANCE) {
-      current_path_.pop();
-      ROS_WARN("[EXPLORATION GOAL RECEVIVED. STOPPING %s TO WAIT FOR NEXT GOAL]",&name_[0]);
-      preferred_velocity_ = RVO::Vector2(0.0, 0.0);
-      stopAgent();
-      ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
-      status.data = status.SUCCEEDED;
+    else {
+      ROS_WARN("[LT_CONTROLLER-%s]: Undefined agent state %d \n",&name_[0],agent_state_);
     }
-    // turnInPlace();
    
   }
   else
@@ -238,7 +223,6 @@ bool Agent::checkifGoalReached()
   double distance_to_goal = distance(current_pose_.transform.translation, current_path_.front().pose.position);
   if (distance_to_goal <= goal_threshold_)
   {
-    ROS_WARN("Goal reached!");
     return true;
   }
   else
