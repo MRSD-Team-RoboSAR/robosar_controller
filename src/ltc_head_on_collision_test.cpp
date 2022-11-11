@@ -13,22 +13,22 @@ int main(int argc, char **argv)
   task_allocation_msg.id.push_back("agent_0");
   task_allocation_msg.startx.push_back(45.0);
   task_allocation_msg.starty.push_back(10.0);
-  task_allocation_msg.goalx.push_back(46.5);
+  task_allocation_msg.goalx.push_back(50.5);
   task_allocation_msg.goaly.push_back(10.0);
 
    // Add agent 1
   task_allocation_msg.id.push_back("agent_1");
-  task_allocation_msg.startx.push_back(46.5);
-  task_allocation_msg.starty.push_back(10.0);
-  task_allocation_msg.goalx.push_back(46.5);
-  task_allocation_msg.goaly.push_back(11.0);
+  task_allocation_msg.startx.push_back(49.0);
+  task_allocation_msg.starty.push_back(11.0);
+  task_allocation_msg.goalx.push_back(49.0);
+  task_allocation_msg.goaly.push_back(10.0);
 
-  // // Add agent 2
-  // task_allocation_msg.id.push_back("agent_2");
-  // task_allocation_msg.startx.push_back(50.0);
-  // task_allocation_msg.starty.push_back(10.0);
-  // task_allocation_msg.goalx.push_back(46.0);
-  // task_allocation_msg.goaly.push_back(10.0);
+  // Add agent 2
+  task_allocation_msg.id.push_back("agent_2");
+  task_allocation_msg.startx.push_back(50.0);
+  task_allocation_msg.starty.push_back(10.0);
+  task_allocation_msg.goalx.push_back(46.0);
+  task_allocation_msg.goaly.push_back(10.0);
 
   // Create publisher
   ros::NodeHandle n;
