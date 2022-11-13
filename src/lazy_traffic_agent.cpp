@@ -5,9 +5,8 @@
 #define PI (3.14159265)
 #define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 #define CONTROL_ANGLE_THRESHOLD_INIT (0.17) //10 degrees
-
-void Agent::stopAgent(void)
-{
+#define USE_STATE_MACHINE (true)
+void Agent::stopAgent(void) {
   // TODO Check if velocity is non zero
   geometry_msgs::Twist vel;
   vel.linear.x = 0.0;
@@ -24,8 +23,7 @@ void Agent::clearPath(void){
   std::queue<geometry_msgs::PoseStamped>().swap(current_path_);
 
 }
-void Agent::sendVelocity(RVO::Vector2 velo)
-{
+void Agent::sendVelocity(RVO::Vector2 velo) {
 
   // Check if velocity is non zero
   if (AreSame(velo.x(), 0.0) && AreSame(velo.y(), 0.0)) {
@@ -60,25 +58,79 @@ void Agent::sendVelocity(RVO::Vector2 velo)
 
   //ROS_INFO("[LT_CONTROLLER-%s]: Sent Velo LIN: %f ANG: %f", &name_[0], vel.linear.x, vel.angular.z);
 }
+void Agent::rotateInPlace() {
+  
+    geometry_msgs::Twist vel;
+    vel.linear.x = 0.0;
+    vel.angular.z = SEARCH_ANGULAR_VELOCITY;
+    // vel.angular.x = 0.0;
+    // vel.angular.y = 0.0;
+    vel.linear.y = 0.0;
+    pub_vel_.publish(vel);
+    ROS_DEBUG("Rotating in place");
+  }
 
 void Agent::updatePreferredVelocity()
 {
 
   if (current_path_.empty())
-  {
+ {
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
     // stopAgent();
     // return;
   }
-  else if (current_path_.size() == 1 && checkifGoalReached())
-  {
+  else if (current_path_.size() == 1 && checkifGoalReached()) {
 
-    current_path_.pop();
+    
     preferred_velocity_ = RVO::Vector2(0.0, 0.0);
-    stopAgent();
-    ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
-
-    status.data = status.SUCCEEDED;
+    if(goal_type_ == robosar_messages::task_graph_getter::Response::COVERAGE && agent_state_!=ROTATION_COMPLETED) {
+      
+      switch (agent_state_)
+      {
+        case TRACKING:
+          ROS_WARN("[LT_CONTROLLER-%s] Coverage goal received, entering turn in place! ", &name_[0]);
+          agent_state_ = ROTATION;
+          rot_count_ = 0;
+          pause_count_ = 0;
+        case ROTATION:
+          rotateInPlace();
+          rot_count_++;
+          ROS_WARN("[LT_CONTROLLER-%s] Search task in rotation state %d ", &name_[0],rot_count_);
+          if(rot_count_ == SEARCH_ROTATION_TIMESTEPS*SEARCH_NUM_ROTATIONS){
+            agent_state_ = ROTATION_COMPLETED;
+          }
+          else if(rot_count_%SEARCH_ROTATION_TIMESTEPS==0)
+          {
+            agent_state_ = SEARCHING;
+          }
+          break;
+        case SEARCHING:
+          stopAgent();
+          pause_count_++;
+          ROS_WARN("[LT_CONTROLLER-%s] ________________________________", &name_[0]);
+          if(pause_count_==SEARCH_PAUSE_TIMESTEPS )
+          {
+            agent_state_ = ROTATION;
+            pause_count_ = 0;
+          }
+          break;
+        default:
+          ROS_ERROR("Invalid state %d", agent_state_);
+      }
+     
+    }
+    else if(goal_type_ != robosar_messages::task_graph_getter::Response::COVERAGE || agent_state_ == ROTATION_COMPLETED) {
+      current_path_.pop();
+      preferred_velocity_ = RVO::Vector2(0.0, 0.0);
+      stopAgent();
+      ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
+      status.data = status.SUCCEEDED;
+      agent_state_ =   TRACKING;
+    }
+    else {
+      ROS_WARN("[LT_CONTROLLER-%s]: Undefined agent state %d \n",&name_[0],agent_state_);
+    }
+   
   }
   else
   {
@@ -163,6 +215,7 @@ void Agent::ppProcessLookahead(geometry_msgs::Transform current_pose)
     ROS_ERROR("[LT_CONTROLLER-%s]: No path to follow. Stopping agent.", &name_[0]);
   }
 }
+// If goal reached, ask robot to spin around once 
 
 bool Agent::checkifGoalReached()
 {
@@ -170,7 +223,6 @@ bool Agent::checkifGoalReached()
   double distance_to_goal = distance(current_pose_.transform.translation, current_path_.front().pose.position);
   if (distance_to_goal <= goal_threshold_)
   {
-    ROS_WARN("Goal reached!");
     return true;
   }
   else
