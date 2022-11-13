@@ -21,6 +21,7 @@
 
 #include "Vector2.h"
 #include "lazy_traffic_rvo.hpp"
+#include "robosar_messages/task_graph_getter.h"
 
 typedef std::pair<std::string, float> AgentDistPair;
 
@@ -32,6 +33,10 @@ using namespace std;
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
 
+#define SEARCH_ANGULAR_VELOCITY (0.7)
+#define SEARCH_PAUSE_TIMESTEPS (2)
+#define SEARCH_ROTATION_TIMESTEPS (15)
+#define SEARCH_NUM_ROTATIONS (3)
 class Agent {
 
 public:
@@ -79,7 +84,8 @@ public:
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
     RVO::Vector2 rvo_velocity_;
-
+    int goal_type_ = 0;
+    
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
@@ -92,7 +98,8 @@ private:
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
     void publishVOVelocityMarker(void);
-    
+    void rotateInPlace(void);
+
     ros::Publisher pub_vel_;
     ros::Publisher pub_status_;
     ros::Publisher vel_marker_pub_;
@@ -111,6 +118,18 @@ private:
     // Velocity obstacles related members
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
     std::vector<std::vector<int>> dir_;
+
+    // Naren's search behaviour
+    int rot_count_ = 0;
+    int pause_count_ = 0;
+    int agent_state_ = TRACKING;
+    enum AGENT_STATE {
+        TRACKING,
+        ROTATION,
+        SEARCHING,
+        ROTATION_COMPLETED,
+        GOAL_REACHED
+    };
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H

@@ -75,11 +75,17 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
             }
             // Parse path and update agent map
             if(req.paths[i].poses.size() > 0) {
+                if(req.goal_type.empty())
+                    agent_map_[req.agent_names[i]].goal_type_ = robosar_messages::task_graph_getter::Response::FRONTIER;
+                else
+                    agent_map_[req.agent_names[i]].goal_type_ = req.goal_type[i];
                 std::queue<geometry_msgs::PoseStamped> path_queue;
                 for(int j = 0; j < req.paths[i].poses.size(); j++) {
                     path_queue.push(req.paths[i].poses[j]);
                 }
                 agent_map_[req.agent_names[i]].current_path_ = path_queue;
+                
+                
             }
             else {
                 ROS_ERROR(" [LT_CONTROLLER] Empty path received for agent %s", &req.agent_names[i][0]);

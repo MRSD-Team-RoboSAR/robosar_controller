@@ -1,7 +1,7 @@
 // Created by Indraneel and Naren on 19/09/22
 #ifndef LAZY_TRAFFIC_CONTROLLER_H
 #define LAZY_TRAFFIC_CONTROLLER_H
-
+#define NUMBER_OF_PAUSES (3)
 
 #include <string>
 #include <cmath>
