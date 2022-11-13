@@ -103,7 +103,6 @@ private:
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
     void publishVOVelocityMarker(bool flag);
-    void publishHeading(void);
     void rotateInPlace(void);
 
     ros::Publisher pub_vel_;
