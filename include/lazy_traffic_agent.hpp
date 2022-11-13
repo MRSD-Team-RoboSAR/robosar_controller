@@ -94,6 +94,7 @@ private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
+    // Returns true if a chance of collision is detected to trigger repulsion
     bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
     void staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 

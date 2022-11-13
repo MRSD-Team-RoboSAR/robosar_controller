@@ -272,7 +272,6 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   }
 
   publishVOVelocityMarker(isCollision);
-  publishHeading();
   // Handle the calculated velocity
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
@@ -492,34 +491,6 @@ void Agent::publishVOVelocityMarker(bool flag) {
     vel_marker_.color.g = 0.0;
     vel_marker_.color.b = 1.0;
   }
-
-  // Publish the marker
-  vel_marker_pub_.publish(vel_marker_);
-}
-
-void Agent::publishHeading() {
-
-  // update marker and publish it on ROS
-  vel_marker_.header.stamp = ros::Time();
-  vel_marker_.id = vel_marker_.id + 1;
-  vel_marker_.pose.position.x = current_pose_.transform.translation.x;
-  vel_marker_.pose.position.y = current_pose_.transform.translation.y;
-  vel_marker_.pose.position.z = 0.0;
-
-  // Set the orientation from preferred velocity direction
-  double yaw = atan2(myheading_.y(), myheading_.x());
-  tf2::Matrix3x3 rot;
-  rot.setEulerYPR(yaw,0.0,0.0);
-  tf2::Quaternion quat;
-  rot.getRotation(quat);
-  vel_marker_.pose.orientation.x = quat.x();
-  vel_marker_.pose.orientation.y = quat.y();
-  vel_marker_.pose.orientation.z = quat.z();
-  vel_marker_.pose.orientation.w = quat.w();
-
-    vel_marker_.color.r = 1.0;
-    vel_marker_.color.g = 1.0;
-    vel_marker_.color.b = 0.0;
 
   // Publish the marker
   vel_marker_pub_.publish(vel_marker_);
