@@ -124,6 +124,17 @@ void Agent::updatePreferredVelocity()
       preferred_velocity_ = RVO::Vector2(0.0, 0.0);
       stopAgent();
       ROS_WARN("[LT_CONTROLLER-%s] Goal reached!", &name_[0]);
+      if(SIMULATION) {
+        int tag_id = -1;
+        if(isAprilTagDetected(tag_id)) {
+          //publish detection to the april tag detector
+          // robosar_messages::AprilTagDetection msg;
+          // msg.header.stamp = ros::Time::now();
+          // msg.header.frame_id = "map";
+          // msg.tag_id = tag_id;
+          std::cout<<"April tag detected with id "<<tag_id<<std::endl;
+        }
+      }
       status.data = status.SUCCEEDED;
       agent_state_ =   TRACKING;
     }
@@ -215,6 +226,19 @@ void Agent::ppProcessLookahead(geometry_msgs::Transform current_pose)
     ROS_ERROR("[LT_CONTROLLER-%s]: No path to follow. Stopping agent.", &name_[0]);
   }
 }
+
+bool Agent::isAprilTagDetected(int &tag_id) {
+  for(int i=0;i<apriltag_poses_.size();i++) {
+    double distance_to_goal = distance(current_pose_.transform.translation, apriltag_poses_[i].pose.position);
+    if (distance_to_goal <= APRILTAG_THRESHHOLD) {
+      tag_id = i;
+      return true;
+    }
+    else continue;
+  }
+  return false;
+}
+
 // If goal reached, ask robot to spin around once 
 
 bool Agent::checkifGoalReached()

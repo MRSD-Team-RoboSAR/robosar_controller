@@ -20,6 +20,25 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
     // Initialise agent map
     initialiseAgentMap(active_agents);
 
+    // Initialize AprilTagPoses for sim
+    if(USE_SIM) {
+        
+        apriltag_marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/lazy_traffic_controller/apriltag_marker", 1);
+        // Initialise the marker message
+        apriltag_marker_.header.frame_id = "map";
+        apriltag_marker_.ns = "apriltag_marker";
+        apriltag_marker_.id = 0;
+        apriltag_marker_.type = visualization_msgs::Marker::CUBE;
+        apriltag_marker_.action = visualization_msgs::Marker::ADD;
+        apriltag_marker_.scale.x = 1.0;
+        apriltag_marker_.scale.y = 1.0;
+        apriltag_marker_.scale.z = 1.0;
+        apriltag_marker_.color.a = 1.0; // Don't forget to set the alpha!
+        apriltag_marker_.lifetime = ros::Duration(1.0);
+        initializeApriltagPoses();
+        publishAprilTagMarkers();
+    }
+
     // Start controller thread
     traffic_controller_thread_ = std::thread(&LazyTrafficController::RunController, this);
 
@@ -34,6 +53,63 @@ LazyTrafficController::~LazyTrafficController() {
 
     controller_active_ = false;
     traffic_controller_thread_.join();
+}
+std::pair<float, float> LazyTrafficController::pixelsToMap(int x_pixel, int y_pixel) {
+  std::cout<<"entered pizels to map \n";
+  
+  std::pair<float, float> map_coords;
+  float scale = occupancy_grid_map_.info.resolution;
+  float x_origin = occupancy_grid_map_.info.origin.position.x;
+  float y_origin = occupancy_grid_map_.info.origin.position.y;
+  map_coords = {x_pixel * scale + x_origin, y_pixel * scale + y_origin};
+  std::cout<<"going to return from pixels to map"<<std::endl;
+  return map_coords;
+}
+// Initialize random apriltag poses in the occupancy grid map for testing
+void LazyTrafficController::initializeApriltagPoses() {
+
+
+    std::cout<<"Inside initializeApriltagPoses"<<std::endl;
+    srand(time(NULL));
+    while(true) {
+        float xr, yr;
+        // Sample free
+
+        // sample random x and y
+        int xp_r = 0;
+        int yp_r = 0;
+        xp_r = rand() % occupancy_grid_map_.info.width;
+        yp_r = rand() % occupancy_grid_map_.info.height;
+        if(occupancy_grid_map_.data[xp_r + yp_r*occupancy_grid_map_.info.width]>0) continue;
+        std::pair<float, float> map_coords = pixelsToMap(xp_r, yp_r);
+        xr = map_coords.first ;
+        yr = map_coords.second ;
+        std::cout<<"xr: "<<xr<<" yr: "<<yr<<std::endl;
+        geometry_msgs::PoseStamped apriltag_pose;
+        apriltag_pose.header.frame_id = map_frame_id_;
+        apriltag_pose.pose.position.x = xr;
+        apriltag_pose.pose.position.y = yr;
+        // if pose already in apriltag_poses set, then continue
+        if (std::count(apriltag_poses_.begin(), apriltag_poses_.end(), apriltag_pose)) continue;
+        // else add to apriltag_poses set
+        apriltag_poses_.push_back(apriltag_pose);
+        // if apriltag_poses set size is 10, break
+        if(apriltag_poses_.size() == NUMBER_OF_VICTIMS) break;
+    }
+}
+
+
+void LazyTrafficController::publishAprilTagMarkers(void) {
+
+  // update marker and publish it on ROS
+  for(int i=0; i<NUMBER_OF_VICTIMS; i++) {
+    apriltag_marker_.header.stamp = ros::Time::now();
+    apriltag_marker_.pose = apriltag_poses_[i].pose;
+    apriltag_marker_.color.r = 0.5;
+    apriltag_marker_.color.g = 0.0;
+    apriltag_marker_.color.b = 0.5;
+    apriltag_marker_pub_.publish(apriltag_marker_);
+  }
 }
 
 // subscribe to occupancy grid map and update the map
@@ -191,7 +267,7 @@ void LazyTrafficController::updateAgentPoses() {
 void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agents) {
     
     for (auto agent : active_agents) {
-        agent_map_[agent] = Agent(agent, nh_);
+        agent_map_[agent] = Agent(agent, nh_, apriltag_poses_);
     }
 }
 

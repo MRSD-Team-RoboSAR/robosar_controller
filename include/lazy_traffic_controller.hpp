@@ -2,7 +2,8 @@
 #ifndef LAZY_TRAFFIC_CONTROLLER_H
 #define LAZY_TRAFFIC_CONTROLLER_H
 #define NUMBER_OF_PAUSES (3)
-
+#define USE_SIM (1)
+#define NUMBER_OF_VICTIMS (12)
 #include <string>
 #include <cmath>
 #include <algorithm>
@@ -10,7 +11,8 @@
 #include <thread>
 #include <mutex>
 #include<unordered_map>
-
+#include <vector>
+#include<time.h>
 #include "robosar_messages/robosar_controller.h"
 #include "lazy_traffic_agent.hpp"
 // ROS stuff
@@ -19,7 +21,7 @@
 #include <ros/console.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
-
+#include <geometry_msgs/PoseStamped.h>
 /***
  * TODO :
  * Measured velocity for one iteration
@@ -70,6 +72,12 @@ private:
     ros::Subscriber gui_subscriber_;
     ros::NodeHandle nh_;
     nav_msgs::OccupancyGrid occupancy_grid_map_;
-    
+    //AprtilTag poses
+    std::vector<geometry_msgs::PoseStamped> apriltag_poses_;
+    void initializeApriltagPoses() ;
+    std::pair<float, float> pixelsToMap(int x_pixel, int y_pixel);
+    visualization_msgs::Marker apriltag_marker_;
+    ros::Publisher apriltag_marker_pub_;
+    void publishAprilTagMarkers() ;
 };
 #endif // LAZY_TRAFFIC_CONTROLLER_H

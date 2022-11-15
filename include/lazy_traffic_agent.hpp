@@ -37,11 +37,13 @@ using namespace std;
 #define SEARCH_PAUSE_TIMESTEPS (2)
 #define SEARCH_ROTATION_TIMESTEPS (15)
 #define SEARCH_NUM_ROTATIONS (3)
+#define APRILTAG_THRESHHOLD (1.5)
+#define SIMULATION (1)
 class Agent {
 
 public:
     Agent() : name_(""), robot_frame_id_(""), current_path_(), current_pose_() {}
-    Agent(std::string name, ros::NodeHandle nh) : name_(name), robot_frame_id_(name + "/base_link"), nh_(nh),
+    Agent(std::string name, ros::NodeHandle nh, std::vector<geometry_msgs::PoseStamped> apriltag_poses) : name_(name), robot_frame_id_(name + "/base_link"), nh_(nh),
                                                   ld_(0.4), v_max_(0.2), goal_threshold_(0.2), w_max_(0.5), at_rest(true),
                                                   preferred_velocity_(RVO::Vector2(0.0, 0.0)), current_velocity_(RVO::Vector2(0.0, 0.0)) {
         // Initialise publisher
@@ -64,6 +66,11 @@ public:
 
         // Initialise dir model for bfs
         dir_ = {{-1 , -1}, {-1 , 0}, {-1 , 1}, {0 , -1}, {0 , 1}, {1 , -1}, {1 , 0}, {1 , 1}};
+
+        // Initialise the subscriber
+        // sub_apriltag_ = nh_.subscribe("/robosar_agent_bringup_node/" + name + "/apriltag_poses", 1, &Agent::apriltagCallback, this);
+        apriltag_poses_.clear();
+        apriltag_poses_ = apriltag_poses;
     }
     ~Agent() {}
 
@@ -130,6 +137,11 @@ private:
         ROTATION_COMPLETED,
         GOAL_REACHED
     };
+
+
+    //vector of poses for apriltags
+    std::vector<geometry_msgs::PoseStamped> apriltag_poses_;
+    bool isAprilTagDetected(int&); 
 };
 
 #endif // LAZY_TRAFFIC_AGENT_H
