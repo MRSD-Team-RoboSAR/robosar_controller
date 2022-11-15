@@ -34,10 +34,10 @@ using namespace std;
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
 
-#define SEARCH_ANGULAR_VELOCITY (0.7)
+#define SEARCH_ANGULAR_VELOCITY (0.5)
 #define SEARCH_PAUSE_TIMESTEPS (2)
 #define SEARCH_ROTATION_TIMESTEPS (15)
-#define SEARCH_NUM_ROTATIONS (3)
+#define SEARCH_NUM_ROTATIONS (4)
 class Agent {
 
 public:
@@ -94,6 +94,7 @@ private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
+    // Returns true if a chance of collision is detected to trigger repulsion
     bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
     void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
     void staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
@@ -102,7 +103,6 @@ private:
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
     void publishVOVelocityMarker(bool flag);
-    void publishHeading(void);
     void rotateInPlace(void);
 
     ros::Publisher pub_vel_;
