@@ -34,10 +34,10 @@ using namespace std;
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
 
-#define SEARCH_ANGULAR_VELOCITY (0.7)
+#define SEARCH_ANGULAR_VELOCITY (0.5)
 #define SEARCH_PAUSE_TIMESTEPS (2)
 #define SEARCH_ROTATION_TIMESTEPS (15)
-#define SEARCH_NUM_ROTATIONS (3)
+#define SEARCH_NUM_ROTATIONS (4)
 class Agent {
 
 public:
