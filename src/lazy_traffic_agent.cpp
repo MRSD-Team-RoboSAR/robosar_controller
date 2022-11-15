@@ -253,8 +253,9 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
     return;
   }
   bool isCollision = false;
+  bool isHoming = homing_;
   // Calculate dynamic and static neighbours
-  isCollision = computeNearestNeighbors(agent_map);
+  isCollision = computeNearestNeighbors(agent_map, isHoming);
   computeStaticObstacles(ocm);
 
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
@@ -265,9 +266,9 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
 
   // Calculate new velocity
   if(!isCollision) {
-    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
+    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_, isHoming);
   } else {
-    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
+    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_, isHoming);
     rvo_velocity_ = flockControlVelocity_weighted(my_info, repulsion_list_, rvo_velocity_);
   }
 
@@ -368,7 +369,7 @@ void Agent::computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map) {
   staticObstacleBfs(current_position, map_data, map_width, map_height, map_resolution, map_origin);
 
 }
-bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
+bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map, bool isHoming)
 {
   bool result = false;
   priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
@@ -388,8 +389,17 @@ bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     string neighbour_agent_name = agent.first;
     float euc_distance = euclidean_dist(neigh_agent_pos, my_pose);
     if(euc_distance < REPULSION_RADIUS) {
-      if(!(AreSame(agent_map[neighbour_agent_name].preferred_velocity_.x(),0.0) &&
-         AreSame(agent_map[neighbour_agent_name].preferred_velocity_.y(),0.0))) {
+      if (isHoming)
+      {
+        if (!(AreSame(agent_map[neighbour_agent_name].preferred_velocity_.x(), 0.0) &&
+              AreSame(agent_map[neighbour_agent_name].preferred_velocity_.y(), 0.0)))
+        {
+          result = true;
+          repulsion_neighbours.push_back(neighbour_agent_name);
+        }
+      }
+      else
+      {
         result = true;
         repulsion_neighbours.push_back(neighbour_agent_name);
       }

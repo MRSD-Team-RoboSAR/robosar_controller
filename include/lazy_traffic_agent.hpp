@@ -87,15 +87,15 @@ public:
     RVO::Vector2 rvo_velocity_;
     RVO::Vector2 myheading_;
     bool at_rest;
-
+    bool homing_ = false;
     int goal_type_ = 0;
-    
+    double goal_threshold_;
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
     // Returns true if a chance of collision is detected to trigger repulsion
-    bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
+    bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map, bool isHoming);
     void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
     void staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
                             const int& map_width, const int& map_height, 
@@ -116,7 +116,6 @@ private:
     double v_max_;
     double w_max_;
     double ld_; // Lookahead distance
-    double goal_threshold_;
     std::string name_;
 
     // Velocity obstacles related members

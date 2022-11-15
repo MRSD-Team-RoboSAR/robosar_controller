@@ -71,8 +71,11 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
             }
             // Parse path and update agent map
             if(req.paths[i].poses.size() > 0) {
-                if(req.goal_type.empty())
+                if(req.goal_type.empty()){
                     agent_map_[req.agent_names[i]].goal_type_ = robosar_messages::task_graph_getter::Response::FRONTIER;
+                    // agent_map_[req.agent_names[i]].goal_threshold_ = 0.4;
+                    agent_map_[req.agent_names[i]].homing_ = true;
+                }
                 else
                     agent_map_[req.agent_names[i]].goal_type_ = req.goal_type[i];
                 std::queue<geometry_msgs::PoseStamped> path_queue;
