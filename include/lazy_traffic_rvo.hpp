@@ -146,7 +146,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
             RVO::Vector2 neigh_pos = n.current_position;
             float time;
             if(isHoming){
-              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_AGENT_RADIUS, is_collision);
+              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, 2*RVO_AGENT_RADIUS, is_collision);
             }else{
               time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
             }
