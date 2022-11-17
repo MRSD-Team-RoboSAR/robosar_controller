@@ -13,6 +13,7 @@
 #define RVO_VELOCITY_SAMPLES (1000) //NUMBER OF SAMPLES PER EACH AGENT
 #define RVO_AGENT_RADIUS (0.15) // Radius of agent
 #define RVO_RADIUS_MULT_FACTOR (4) // since r1 + r2 = 2*r for RoboSAR, Define agent_radius and mult_factor for obstacle cone
+#define RVO_RADIUS_MULT_FACTOR_HOMING (2) // since r1 + r2 = 2*r for RoboSAR, Define agent_radius and mult_factor for obstacle cone
 #define TIME_STEP (1) //frequence at which controller runs ( 1/ timestep)
 #define RVO_SAFETY_FACTOR (20.0f) //The safety factor of the agent (weight for penalizing candidate velocities - the higher the safety factor, the less 'aggressive' an agent is)
 #define RVO_INFTY (9e9f)
@@ -146,7 +147,7 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
             RVO::Vector2 neigh_pos = n.current_position;
             float time;
             if(isHoming){
-              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, 2*RVO_AGENT_RADIUS, is_collision);
+              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR_HOMING*RVO_AGENT_RADIUS, is_collision);
             }else{
               time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
             }
