@@ -121,7 +121,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
     
     std::lock_guard<std::mutex> lock(map_mutex);
 
-    static int iter = 0;
+    static int iter = 1;
     if(iter == (int)(velocity_calc_period_s/controller_period_s)) {
 
         // Measure execution time of function
@@ -129,7 +129,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
 
         // Update current poses of all agents from tf
         updateAgentPoses();
-        iter = 0;
+        iter = 1;
 
         // Calculate preferred velocities for all agents
         for(auto &agent : agent_map_) {
