@@ -29,14 +29,15 @@ using namespace std;
 
 #define MAX_NEIGHBORS (5) // Maximum number of neighbors to consider
 #define MAX_NEIGH_DISTANCE (2.00) //Max distance among neighbors
+#define REPULSION_RADIUS (0.5f) //Repulsion radius
 #define COLLISION_THRESH (50) // Collision threshold
 #define USE_STATIC_OBSTACLE_AVOIDANCE (1)
 #define MAX_STATIC_OBS_DIST (0.5)
 
-#define SEARCH_ANGULAR_VELOCITY (0.7)
-#define SEARCH_PAUSE_TIMESTEPS (2)
-#define SEARCH_ROTATION_TIMESTEPS (15)
-#define SEARCH_NUM_ROTATIONS (3)
+#define SEARCH_ANGULAR_VELOCITY (0.5)
+#define SEARCH_PAUSE_TIMESTEPS (10) // Should ve enough for fps of camera to capture atleast one frame
+#define SEARCH_ROTATION_TIMESTEPS (16)
+#define SEARCH_NUM_ROTATIONS (4)
 class Agent {
 
 public:
@@ -84,20 +85,24 @@ public:
     RVO::Vector2 preferred_velocity_;
     RVO::Vector2 current_velocity_;
     RVO::Vector2 rvo_velocity_;
+    RVO::Vector2 myheading_;
+    bool at_rest;
+    bool homing_ = false;
     int goal_type_ = 0;
-    
+    double goal_threshold_;
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
-    void computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map);
+    // Returns true if a chance of collision is detected to trigger repulsion
+    bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map, bool isHoming);
     void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
     void staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
                             const int& map_width, const int& map_height, 
                             const float& map_resolution,const geometry_msgs::Point& map_origin);
     RVO::Vector2 getCurrentHeading();
     void publishPreferredVelocityMarker(void);
-    void publishVOVelocityMarker(void);
+    void publishVOVelocityMarker(bool flag);
     void rotateInPlace(void);
 
     ros::Publisher pub_vel_;
@@ -111,12 +116,11 @@ private:
     double v_max_;
     double w_max_;
     double ld_; // Lookahead distance
-    double goal_threshold_;
-    bool at_rest;
     std::string name_;
 
     // Velocity obstacles related members
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;
+    std::vector<rvo_agent_obstacle_info_s> repulsion_list_;
     std::vector<std::vector<int>> dir_;
 
     // Naren's search behaviour
