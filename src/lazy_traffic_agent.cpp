@@ -6,6 +6,8 @@
 #define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 #define CONTROL_ANGLE_THRESHOLD_INIT (0.17) //10 degrees
 #define USE_STATE_MACHINE (true)
+#define EPSILON 10e-4
+
 void Agent::stopAgent(void) {
   // TODO Check if velocity is non zero
   geometry_msgs::Twist vel;
@@ -42,7 +44,12 @@ void Agent::sendVelocity(RVO::Vector2 velo) {
   // Calculate cross product
   double cross_product = heading.x() * velo_norm.y() - heading.y() * velo_norm.x();
   // Calculate dot product
-  vel.angular.z = acos(heading * velo_norm);
+  //float angular_z = std::min(std::max(heading * velo_norm, -1.0), 1.0);
+  float angular_z = heading * velo_norm + EPSILON > 1.0 ? 1.0 : heading * velo_norm;
+  angular_z = heading * velo_norm - EPSILON < -1.0 ? -1.0 : heading * velo_norm;
+  assert(angular_z<=1.0);
+  assert(angular_z >=-1.0);
+  vel.angular.z = acos(angular_z);
 
   // Map linear velocity based on error in angular velocity
   vel.linear.x = 0.0 + v_max_ * (1.0 - fabs(vel.angular.z) / CONTROL_ANGLE_THRESHOLD);
