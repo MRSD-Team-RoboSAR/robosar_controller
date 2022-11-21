@@ -37,7 +37,7 @@ using namespace std;
 #define SEARCH_ANGULAR_VELOCITY (0.5)
 #define SEARCH_PAUSE_TIMESTEPS (10) // Should ve enough for fps of camera to capture atleast one frame
 #define SEARCH_ROTATION_TIMESTEPS (16)
-#define SEARCH_NUM_ROTATIONS (4)
+#define SEARCH_NUM_ROTATIONS (8)
 class Agent {
 
 public:
