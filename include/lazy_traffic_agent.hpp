@@ -90,6 +90,7 @@ public:
     bool homing_ = false;
     int goal_type_ = 0;
     double goal_threshold_;
+    robosar_messages::controller_status status;
 private:
     void ppProcessLookahead(geometry_msgs::Transform current_pose);
     bool checkifGoalReached();
@@ -110,7 +111,6 @@ private:
     ros::Publisher vel_marker_pub_;
     ros::NodeHandle nh_;
     geometry_msgs::TransformStamped lookahead_;
-    robosar_messages::controller_status status;
     visualization_msgs::Marker vel_marker_;
 
     double v_max_;
