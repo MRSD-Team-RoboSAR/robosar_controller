@@ -79,6 +79,9 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
                 }
                 else
                     agent_map_[req.agent_names[i]].goal_type_ = req.goal_type[i];
+                
+                if(!req.goal_id.empty())
+                    agent_map_[req.agent_names[i]].status.goal_id = req.goal_id[i];
                 std::queue<geometry_msgs::PoseStamped> path_queue;
                 for(int j = 0; j < req.paths[i].poses.size(); j++) {
                     path_queue.push(req.paths[i].poses[j]);
