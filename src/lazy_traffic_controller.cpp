@@ -60,10 +60,6 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
             agent.second.clearPath();
         }
     }
-    // else if (fleet_status_outdated_){
-    //       processNewAgentStatus(getFleetStatusInfo());
-    //       fleet_status_outdated = false;
-    // }
     else {
         ROS_INFO(" [LT_CONTROLLER] New %ld paths received!", req.paths.size());
         for(int i = 0; i < req.paths.size(); i++) {
@@ -110,6 +106,8 @@ void LazyTrafficController::RunController() {
         // Check if fleet status is outdated
         if(fleet_status_outdated_) {
             // TODO: Update agent map
+            ROS_INFO(" [LT_CONTROLLER] Fleet status outdated, updating!!");
+            processNewAgentStatus(getFleetStatusInfo());
             fleet_status_outdated_ = false;
         }
         
@@ -193,6 +191,7 @@ void LazyTrafficController::updateAgentPoses() {
 }
 void LazyTrafficController::processNewAgentStatus(std::set<string> new_fleet_info) {
 
+    std::lock_guard<std::mutex> lock(map_mutex);
     // Get newly added agents
     std::set<string> additions;
     std::set<string> subtractions;
@@ -201,15 +200,11 @@ void LazyTrafficController::processNewAgentStatus(std::set<string> new_fleet_inf
 
     std::set_difference(active_agents.begin(), active_agents.end(),
                             new_fleet_info.begin(), new_fleet_info.end(), std::inserter(subtractions, subtractions.begin()));
-    bool additions_empty = true;
     if(!additions.empty()) {
 
         // Add them to our fleet info!
         active_agents.insert(additions.begin(),additions.end());
-        additions_empty = false;
-    }
-    if(!additions_empty) {
-        initialiseAgentMap(active_agents);
+        initialiseAgentMap(additions);
     }
     if(!subtractions.empty()) {
         // Dont destroy the action server for now
@@ -217,6 +212,7 @@ void LazyTrafficController::processNewAgentStatus(std::set<string> new_fleet_inf
         for(auto s:subtractions) {
             // clear the agent's path
             // publish zero velocity 
+            ROS_INFO(" [LT_CONTROLLER] Agent %s has been removed from the fleet", s.c_str());
             agent_map_[s].clearPath();
             agent_map_[s].stopAgent();
         }
@@ -226,6 +222,7 @@ void LazyTrafficController::processNewAgentStatus(std::set<string> new_fleet_inf
 void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agents) {
     
     for (auto agent : active_agents) {
+        ROS_INFO(" [LT_CONTROLLER] Initialising agent %s", agent.c_str());
         agent_map_[agent] = Agent(agent, nh_);
     }
 }
