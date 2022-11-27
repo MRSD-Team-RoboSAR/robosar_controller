@@ -234,12 +234,12 @@ install(DIRECTORY include
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(simple_test test/simple_test.cpp)
+# catkin_add_gtest(simple_test test/simple_test.cpp)
 catkin_add_gtest(time_to_collision_test test/time_to_collision_test.cpp)
 catkin_add_gtest(rvo_compute_velocity_test test/rvo_compute_velocity_test.cpp)
 catkin_add_gtest(static_collision_test test/static_collision_test.cpp)
 
-target_link_libraries(simple_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
+# target_link_libraries(simple_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
 target_link_libraries(time_to_collision_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
 target_link_libraries(rvo_compute_velocity_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})
 target_link_libraries(static_collision_test ${GTEST_LIBRARIES}  ${catkin_LIBRARIES})

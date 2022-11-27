@@ -1,11 +1,15 @@
 // Created by Indraneel on 22/09/22
 
+#include <boost/algorithm/clamp.hpp>
+
 #include "lazy_traffic_agent.hpp"
 
 #define PI (3.14159265)
 #define CONTROL_ANGLE_THRESHOLD (PI/2.0)
 #define CONTROL_ANGLE_THRESHOLD_INIT (0.17) //10 degrees
 #define USE_STATE_MACHINE (true)
+#define EPSILON 10e-3
+
 void Agent::stopAgent(void) {
   // TODO Check if velocity is non zero
   geometry_msgs::Twist vel;
@@ -42,7 +46,11 @@ void Agent::sendVelocity(RVO::Vector2 velo) {
   // Calculate cross product
   double cross_product = heading.x() * velo_norm.y() - heading.y() * velo_norm.x();
   // Calculate dot product
-  vel.angular.z = acos(getCurrentHeading() * velo_norm);
+  //float angular_z = std::min(std::max(heading * velo_norm, -1.0), 1.0);
+  float angular_z = boost::algorithm::clamp(heading * velo_norm, -1.0, 1.0);
+  // assert(angular_z<=1.0);
+  // assert(angular_z >=-1.0);
+  vel.angular.z = acos(angular_z);
 
   // Map linear velocity based on error in angular velocity
   vel.linear.x = 0.0 + v_max_ * (1.0 - fabs(vel.angular.z) / CONTROL_ANGLE_THRESHOLD);
@@ -240,6 +248,7 @@ RVO::Vector2 Agent::getCurrentHeading()
 
   // Convert to unit vector
   RVO::Vector2 heading(cos(yaw), sin(yaw));
+  myheading_ = heading;
   return heading;
 }
 
@@ -251,9 +260,10 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
     rvo_velocity_ = RVO::Vector2(0.0, 0.0);
     return;
   }
-
+  bool isCollision = false;
+  bool isHoming = homing_;
   // Calculate dynamic and static neighbours
-  computeNearestNeighbors(agent_map);
+  isCollision = computeNearestNeighbors(agent_map, isHoming);
   computeStaticObstacles(ocm);
 
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
@@ -263,9 +273,14 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   //ROS_INFO("[LT_CONTROLLER-%s]: Neighbours: %ld", &name_[0], neighbors_list_.size());
 
   // Calculate new velocity
-  rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_);
+  if(!isCollision) {
+    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_, isHoming);
+  } else {
+    rvo_velocity_ = rvoComputeNewVelocity(my_info, neighbors_list_, isHoming);
+    rvo_velocity_ = flockControlVelocity_weighted(my_info, repulsion_list_, rvo_velocity_);
+  }
 
-  publishVOVelocityMarker();
+  publishVOVelocityMarker(isCollision);
   // Handle the calculated velocity
   ROS_INFO("[LT_CONTROLLER-%s]: RVO Velo X: %f Y: %f", &name_[0], rvo_velocity_.x(), rvo_velocity_.y());
 }
@@ -320,6 +335,7 @@ void Agent::staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_
       obs.current_position = obs_pos;
       obs.currrent_velocity = RVO::Vector2(0.0,0.0);
       neighbors_list_.push_back(obs);
+      // repulsion_list_.push_back(obs); // TODO : Will the other agents at home be considered obstacles?
     }
 
     //expand node
@@ -361,11 +377,14 @@ void Agent::computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map) {
   staticObstacleBfs(current_position, map_data, map_width, map_height, map_resolution, map_origin);
 
 }
-void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map)
+bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map, bool isHoming)
 {
+  bool result = false;
   priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
+  std::vector<std::string> repulsion_neighbours;
   RVO::Vector2 my_pose(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
   neighbors_list_.clear();
+  repulsion_list_.clear();
 
   // Crop agents based on distance
   for (const auto &agent : agent_map) {
@@ -377,7 +396,22 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     RVO::Vector2 neigh_agent_pos(agent.second.current_pose_.transform.translation.x, agent.second.current_pose_.transform.translation.y);
     string neighbour_agent_name = agent.first;
     float euc_distance = euclidean_dist(neigh_agent_pos, my_pose);
-
+    if(euc_distance < REPULSION_RADIUS) {
+      if (isHoming)
+      {
+        if (!(AreSame(agent_map[neighbour_agent_name].preferred_velocity_.x(), 0.0) &&
+              AreSame(agent_map[neighbour_agent_name].preferred_velocity_.y(), 0.0)))
+        {
+          result = true;
+          repulsion_neighbours.push_back(neighbour_agent_name);
+        }
+      }
+      else
+      {
+        result = true;
+        repulsion_neighbours.push_back(neighbour_agent_name);
+      }
+    }
     if (euc_distance < MAX_NEIGH_DISTANCE)
       all_neighbors.push(make_pair(neighbour_agent_name, euc_distance));
   }
@@ -400,6 +434,22 @@ void Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     neigh.max_vel = agent_map[neigh.agent_name].v_max_;
     neighbors_list_.push_back(neigh);
   }
+
+  for(int i=0;i<repulsion_neighbours.size();i++) {
+    rvo_agent_obstacle_info_s neigh;
+    neigh.agent_name = repulsion_neighbours[i];
+    if(AreSame(agent_map[neigh.agent_name].preferred_velocity_.x(),0.0) && AreSame(agent_map[neigh.agent_name].preferred_velocity_.y(),0.0))
+      continue;
+    RVO::Vector2 neigh_agent_pos(agent_map[neigh.agent_name].current_pose_.transform.translation.x,
+                                  agent_map[neigh.agent_name].current_pose_.transform.translation.y);
+    neigh.current_position = neigh_agent_pos;
+    neigh.currrent_velocity = agent_map[neigh.agent_name].current_velocity_;
+    neigh.preferred_velocity = agent_map[neigh.agent_name].preferred_velocity_;
+    neigh.max_vel = agent_map[neigh.agent_name].v_max_;
+    repulsion_list_.push_back(neigh);
+  }
+
+  return result;
 }
 
 void Agent::publishPreferredVelocityMarker(void) {
@@ -430,7 +480,7 @@ void Agent::publishPreferredVelocityMarker(void) {
   vel_marker_pub_.publish(vel_marker_);
 }
 
-void Agent::publishVOVelocityMarker(void) {
+void Agent::publishVOVelocityMarker(bool flag) {
 
   // update marker and publish it on ROS
   vel_marker_.header.stamp = ros::Time();
@@ -450,9 +500,15 @@ void Agent::publishVOVelocityMarker(void) {
   vel_marker_.pose.orientation.z = quat.z();
   vel_marker_.pose.orientation.w = quat.w();
 
-  vel_marker_.color.r = 0.0;
-  vel_marker_.color.g = 0.0;
-  vel_marker_.color.b = 1.0;
+  if(flag) {
+    vel_marker_.color.r = 0.0;
+    vel_marker_.color.g = 1.0;
+    vel_marker_.color.b = 0.0;
+  } else {
+    vel_marker_.color.r = 0.0;
+    vel_marker_.color.g = 0.0;
+    vel_marker_.color.b = 1.0;
+  }
 
   // Publish the marker
   vel_marker_pub_.publish(vel_marker_);

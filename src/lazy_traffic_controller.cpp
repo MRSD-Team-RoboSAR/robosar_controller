@@ -71,10 +71,17 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
             }
             // Parse path and update agent map
             if(req.paths[i].poses.size() > 0) {
-                if(req.goal_type.empty())
+                if(req.goal_type.empty()){
+                    // If goal type is not specified assume it to be a homing task
                     agent_map_[req.agent_names[i]].goal_type_ = robosar_messages::task_graph_getter::Response::FRONTIER;
+                    agent_map_[req.agent_names[i]].goal_threshold_ = 0.4; // increase goal threshold for homing task
+                    agent_map_[req.agent_names[i]].homing_ = true;
+                }
                 else
                     agent_map_[req.agent_names[i]].goal_type_ = req.goal_type[i];
+                
+                if(!req.goal_id.empty())
+                    agent_map_[req.agent_names[i]].status.goal_id = req.goal_id[i];
                 std::queue<geometry_msgs::PoseStamped> path_queue;
                 for(int j = 0; j < req.paths[i].poses.size(); j++) {
                     path_queue.push(req.paths[i].poses[j]);
@@ -120,7 +127,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
     
     std::lock_guard<std::mutex> lock(map_mutex);
 
-    static int iter = 0;
+    static int iter = 1;
     if(iter == (int)(velocity_calc_period_s/controller_period_s)) {
 
         // Measure execution time of function
@@ -128,7 +135,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
 
         // Update current poses of all agents from tf
         updateAgentPoses();
-        iter = 0;
+        iter = 1;
 
         // Calculate preferred velocities for all agents
         for(auto &agent : agent_map_) {
