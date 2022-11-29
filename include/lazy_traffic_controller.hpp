@@ -70,6 +70,7 @@ private:
     ros::Subscriber gui_subscriber_;
     ros::NodeHandle nh_;
     nav_msgs::OccupancyGrid occupancy_grid_map_;
+    void processNewAgentStatus(std::set<string> new_fleet_info);
     
 };
 #endif // LAZY_TRAFFIC_CONTROLLER_H

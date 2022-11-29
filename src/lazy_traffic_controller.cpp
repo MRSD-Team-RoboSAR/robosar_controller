@@ -113,6 +113,8 @@ void LazyTrafficController::RunController() {
         // Check if fleet status is outdated
         if(fleet_status_outdated_) {
             // TODO: Update agent map
+            ROS_INFO(" [LT_CONTROLLER] Fleet status outdated, updating!!");
+            processNewAgentStatus(getFleetStatusInfo());
             fleet_status_outdated_ = false;
         }
         
@@ -194,10 +196,40 @@ void LazyTrafficController::updateAgentPoses() {
         //                         it->second.current_velocity_.x(), it->second.current_velocity_.y());
     }
 }
+void LazyTrafficController::processNewAgentStatus(std::set<string> new_fleet_info) {
 
+    std::lock_guard<std::mutex> lock(map_mutex);
+    // Get newly added agents
+    std::set<string> additions;
+    std::set<string> subtractions;
+    std::set_difference(new_fleet_info.begin(), new_fleet_info.end(),
+                            active_agents.begin(), active_agents.end(), std::inserter(additions, additions.begin()));
+
+    std::set_difference(active_agents.begin(), active_agents.end(),
+                            new_fleet_info.begin(), new_fleet_info.end(), std::inserter(subtractions, subtractions.begin()));
+    if(!additions.empty()) {
+
+        // Add them to our fleet info!
+        active_agents.insert(additions.begin(),additions.end());
+        initialiseAgentMap(additions);
+    }
+    if(!subtractions.empty()) {
+        // Dont destroy the action server for now
+        // Just stop it from executing
+        for(auto s:subtractions) {
+            // clear the agent's path
+            // publish zero velocity 
+            ROS_INFO(" [LT_CONTROLLER] Agent %s has been removed from the fleet", s.c_str());
+            agent_map_[s].clearPath();
+            agent_map_[s].stopAgent();
+        }
+    }
+    
+}
 void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agents) {
     
     for (auto agent : active_agents) {
+        ROS_INFO(" [LT_CONTROLLER] Initialising agent %s", agent.c_str());
         agent_map_[agent] = Agent(agent, nh_);
     }
 }
