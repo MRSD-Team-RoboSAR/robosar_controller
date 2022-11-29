@@ -146,7 +146,8 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
             vel_a_to_b = vel_cand - vel_b;
             RVO::Vector2 neigh_pos = n.current_position;
             float time;
-            if(isHoming){
+            //If homing or if neighbour is at rest/searching, reduce clearance radius to avoid deadlock
+            if(isHoming || (AreSame(vel_b.x(),0.0)&& AreSame(vel_b.y(),0.0))){
               time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR_HOMING*RVO_AGENT_RADIUS, is_collision);
             }else{
               time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
